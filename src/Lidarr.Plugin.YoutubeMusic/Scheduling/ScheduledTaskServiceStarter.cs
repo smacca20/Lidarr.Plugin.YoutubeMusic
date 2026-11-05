@@ -1,6 +1,7 @@
 using System;
 using NLog;
 using NzbDrone.Core.Lifecycle;
+using NzbDrone.Core.Messaging;          // EventHandleOrder lives here
 using NzbDrone.Core.Messaging.Events;
 
 namespace NzbDrone.Core.Plugins.Scheduling
@@ -28,6 +29,7 @@ namespace NzbDrone.Core.Plugins.Scheduling
             _scheduledTaskService.CaptureExistingTasks();
         }
 
+        [EventHandleOrder(EventHandleOrder.Last)]
         public void Handle(ApplicationStartedEvent message)
         {
             _logger.Debug("[YTM] ApplicationStarted: initializing scheduled tasks");

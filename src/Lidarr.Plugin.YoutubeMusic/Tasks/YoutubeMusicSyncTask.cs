@@ -1,30 +1,66 @@
 using System;
+using NLog;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Plugins.Scheduling;
-using NzbDrone.Core.Plugins.Services;
 
 namespace NzbDrone.Core.Plugins
 {
     /// <summary>
-    /// The scheduled entry (Settings &gt; Metadata &gt; "YouTube Music Sync Scan").
-    /// Registers <see cref="YoutubeMusicSyncCommand"/> on a configurable interval,
-    /// giving in-app, UI-managed recurrence for the YT Music sync. Captures its
-    /// settings so <see cref="YoutubeMusicSyncCommandExecutor"/> can run the CLI.
+    /// Scheduled "YouTube Music Sync Scan" entry (Settings &gt; Metadata) that also runs
+    /// the sync when fired. Merging <see cref="IExecute{TCommand}"/> into the metadata
+    /// provider (rather than using a separate executor service) avoids a DryIoc
+    /// recursive dependency at startup: this resolver only depends on the lightweight
+    /// process runner and NLog, never on provider factories or other plugins.
     /// </summary>
-    public class YoutubeMusicSyncTask : ScheduledTaskBase<YoutubeMusicSettings>
+    public class YoutubeMusicSyncTask : ScheduledTaskBase<YoutubeMusicSettings>, IExecute<YoutubeMusicSyncCommand>
     {
+        private readonly YoutubeMusicProcessRunner _runner;
+        private readonly Logger _logger;
+
+        public YoutubeMusicSyncTask(YoutubeMusicProcessRunner runner, Logger logger)
+        {
+            _runner = runner ?? throw new ArgumentNullException(nameof(runner));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
         public override string Name => "YouTube Music Sync Scan";
 
         public override Type CommandType => typeof(YoutubeMusicSyncCommand);
 
-        public override int IntervalMinutes =>
-            (Settings?.ScanIntervalMinutes ?? 0) < 60 ? 1440 : Settings!.ScanIntervalMinutes;
+        public override int IntervalMinutes => TryGetInterval();
 
-        public override CommandPriority Priority => CommandPriority.Normal;
+        public override CommandPriority Priority => CommandPriority.Low;
 
-        public YoutubeMusicSyncTask()
+        private int TryGetInterval()
         {
-            YoutubeMusicRunContext.Current = Settings ?? new YoutubeMusicSettings();
+            try
+            {
+                if (Definition?.Settings is YoutubeMusicSettings settings && settings.ScanIntervalMinutes >= 60)
+                {
+                    return settings.ScanIntervalMinutes;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "[YTM] interval read failed, defaulting to 1440");
+            }
+
+            return 1440;
+        }
+
+        public void Execute(YoutubeMusicSyncCommand message)
+        {
+            if (message == null)
+            {
+                throw new ArgumentNullException(nameof(message));
+            }
+
+            var settings = Definition?.Settings as YoutubeMusicSettings ?? new YoutubeMusicSettings();
+            var exit = _runner.Run(settings);
+            message.SetResultMessage(
+                exit == 0
+                    ? "YouTube Music sync completed successfully."
+                    : $"YouTube Music sync exited with code {exit} (see Lidarr log).");
         }
     }
 }
