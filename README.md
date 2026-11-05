@@ -79,8 +79,27 @@ above and attaches the zip to a GitHub **Release** on `main`.
 > Request Headers → Cookie). The plugin holds it **in memory** and passes it to the
 > sync process via an **environment variable** (ephemeral — never written to disk).
 > Leave it empty to use a `headers.json` file on the `headers_file` config path
-> instead. Cookies can expire; re-paste when rejected. (A more durable OAuth token
-> flow is possible via ytmusicapi's device flow — see project notes.)
+> instead. Cookies can expire; re-paste when rejected.
+
+> **Monitor added albums (default ON):** the **"Monitor added albums"** checkbox on the
+> entry controls whether newly added albums are auto-monitored in Lidarr (so they're
+> flagged for download). Disable it to only add artists/albums without monitoring.
+
+> **OAuth instead of a cookie (recommended, durable & auto-refreshing):**
+> 1. Create a Google Cloud OAuth client (APIs & Services → Credentials → Create
+>    OAuth client ID → **Android Auto**), give it access to the **YouTube Data API**,
+>    and copy the `client_id` / `client_secret`.
+> 2. Put them in the sync project's `config.ini` under `[ytmusic] oauth_client_id` /
+>    `oauth_client_secret` (or in the baked image's `/app/sync/config.ini`).
+> 3. One time, run `python3 -m ytmusic_lidarr_sync --oauth-login` (device flow: a URL +
+>    code, auto-refreshing token saved to `oauth.json`). After that the sync authenticates
+>    with OAuth automatically, with no cookie to refresh.
+
+> **Zero-touch install (baked image):** `docker/Dockerfile` builds a lidarr image with
+> Python + the sync engine already inside (`/app/sync`), so anyone can add the plugin by
+> installing the zip + pasting auth — **no `apk add` / file copying into the running
+> container**. The default sync-project path auto-detects `/app/sync` vs
+> `/config/ytmusic-lidarr-sync`. The API key is auto-read from Lidarr's `config.xml`.
 3. Optionally run once immediately from **System → Tasks → YouTube Music Sync**.
 
 The sync logs to `config/logs/Lidarr.debug.txt` (enable Debug/Trace logging in

@@ -92,6 +92,7 @@ namespace NzbDrone.Core.Plugins
                 CliArgs = Pick(task?.CliArgs, notif?.CliArgs, "--search"),
                 ScanIntervalMinutes = task?.ScanIntervalMinutes ?? notif?.ScanIntervalMinutes ?? 1440,
                 AuthCookie = Pick(task?.AuthCookie, notif?.AuthCookie, ""),
+                MonitorAlbums = (task?.MonitorAlbums ?? notif?.MonitorAlbums) ?? true,
             };
 
             // A base install should work with just a cookie: fall back to the container

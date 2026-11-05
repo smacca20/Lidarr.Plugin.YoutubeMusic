@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using FluentValidation;
 using NzbDrone.Core.Annotations;
 using NzbDrone.Core.ThingiProvider;
@@ -15,7 +16,14 @@ namespace NzbDrone.Core.Plugins
     {
         /// <summary>Defaults for a container install, so a base setup only needs the cookie.</summary>
         public const string DefaultPythonExecutable = "/usr/bin/python3";
-        public const string DefaultCliProjectPath = "/config/ytmusic-lidarr-sync";
+        public const string MountedProjectPath = "/config/ytmusic-lidarr-sync";
+        public const string BakedProjectPath = "/app/sync";
+
+        /// <summary>Pick whichever sync-project path actually exists on this host.</summary>
+        public static string DefaultCliProjectPath =>
+            Directory.Exists(Path.Combine(BakedProjectPath, "ytmusic_lidarr_sync")) ? BakedProjectPath
+            : Directory.Exists(Path.Combine(MountedProjectPath, "ytmusic_lidarr_sync")) ? MountedProjectPath
+            : MountedProjectPath;
 
         public YoutubeMusicSettings()
         {
@@ -24,6 +32,7 @@ namespace NzbDrone.Core.Plugins
             CliArgs = "--search";
             ScanIntervalMinutes = 1440;
             AuthCookie = "";
+            MonitorAlbums = true;
         }
 
         [FieldDefinition(0, Label = "Python executable", Type = FieldType.Textbox,
@@ -45,6 +54,10 @@ namespace NzbDrone.Core.Plugins
         [FieldDefinition(4, Label = "YouTube Music cookie (auth)", Type = FieldType.Password,
             HelpText = "Optional. Open https://music.youtube.com in a browser, sign in, then copy the full 'Cookie' header value (DevTools > Network > any request > Request Headers > Cookie) and paste it here. It is held in memory and passed to the sync process via an environment variable - never written to disk. Leave empty to use headers_file instead.")]
         public string AuthCookie { get; set; }
+
+        [FieldDefinition(5, Label = "Monitor added albums", Type = FieldType.Checkbox,
+            HelpText = "Automatically monitor newly added albums so Lidarr flags them for download. Default ON. Disable to only add artists/albums without auto-monitoring.")]
+        public bool MonitorAlbums { get; set; } = true;
 
         public NzbDroneValidationResult Validate()
         {

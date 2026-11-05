@@ -56,6 +56,11 @@ namespace NzbDrone.Core.Plugins
                 psi.ArgumentList.Add(token);
             }
 
+            // Pass the preferred monitored-albums behaviour to the CLI.
+            psi.ArgumentList.Add(settings.MonitorAlbums
+                ? "--monitor-albums"
+                : "--no-monitor-albums");
+
             // Provide the auth cookie in memory only (ephemeral env var), never on disk.
             if (!string.IsNullOrEmpty(settings.AuthCookie))
             {
