@@ -85,14 +85,30 @@ namespace NzbDrone.Core.Plugins
             var task = ResolveTaskSettings();
             var notif = ResolveNotificationSettings();
 
-            return new YoutubeMusicSettings
+            var merged = new YoutubeMusicSettings
             {
-                PythonExecutable = Pick(task?.PythonExecutable, notif?.PythonExecutable, "python"),
-                CliProjectPath = Pick(task?.CliProjectPath, notif?.CliProjectPath, ""),
+                PythonExecutable = Pick(task?.PythonExecutable, notif?.PythonExecutable, YoutubeMusicSettings.DefaultPythonExecutable),
+                CliProjectPath = Pick(task?.CliProjectPath, notif?.CliProjectPath, YoutubeMusicSettings.DefaultCliProjectPath),
                 CliArgs = Pick(task?.CliArgs, notif?.CliArgs, "--search"),
                 ScanIntervalMinutes = task?.ScanIntervalMinutes ?? notif?.ScanIntervalMinutes ?? 1440,
                 AuthCookie = Pick(task?.AuthCookie, notif?.AuthCookie, ""),
             };
+
+            // A base install should work with just a cookie: fall back to the container
+            // defaults even if the persisted definition carries an old/empty value.
+            if (string.IsNullOrWhiteSpace(merged.PythonExecutable)
+                || merged.PythonExecutable.Equals("python", StringComparison.OrdinalIgnoreCase)
+                || merged.PythonExecutable.Equals("py", StringComparison.OrdinalIgnoreCase))
+            {
+                merged.PythonExecutable = YoutubeMusicSettings.DefaultPythonExecutable;
+            }
+
+            if (string.IsNullOrWhiteSpace(merged.CliProjectPath))
+            {
+                merged.CliProjectPath = YoutubeMusicSettings.DefaultCliProjectPath;
+            }
+
+            return merged;
         }
 
         private YoutubeMusicSettings? ResolveTaskSettings()

@@ -13,10 +13,14 @@ namespace NzbDrone.Core.Plugins
     /// </summary>
     public class YoutubeMusicSettings : IProviderConfig
     {
+        /// <summary>Defaults for a container install, so a base setup only needs the cookie.</summary>
+        public const string DefaultPythonExecutable = "/usr/bin/python3";
+        public const string DefaultCliProjectPath = "/config/ytmusic-lidarr-sync";
+
         public YoutubeMusicSettings()
         {
-            PythonExecutable = "python";
-            CliProjectPath = "";
+            PythonExecutable = DefaultPythonExecutable;
+            CliProjectPath = DefaultCliProjectPath;
             CliArgs = "--search";
             ScanIntervalMinutes = 1440;
             AuthCookie = "";
