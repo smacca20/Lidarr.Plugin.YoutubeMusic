@@ -1,0 +1,17 @@
+# Build output and downloaded Lidarr binaries
+_temp/
+_output/
+bin/
+obj/
+*.zip
+
+# Local config / secrets
+config.ini
+headers.json
+auth.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/

@@ -1,0 +1,21 @@
+<Project>
+  <!--
+    References the *compiled* Lidarr plugin-capable binaries (develop/nightly,
+    &gt;= 3.1.2.4938, pinned here to 3.1.3.4968) as plain .NET references.
+    The binaries are downloaded into _temp/lidarr/&lt;version&gt;/ by
+    scripts/prepare-lidarr.py before building.
+  -->
+  <PropertyGroup>
+    <LidarrVersion>3.1.3.4968</LidarrVersion>
+    <LidarrReferenceDir>$(MSBuildThisFileDirectory)_temp/lidarr/$(LidarrVersion)</LidarrReferenceDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(LidarrReferenceDir)/Lidarr.Core.dll;$(LidarrReferenceDir)/Lidarr.Common.dll;$(LidarrReferenceDir)/Lidarr.Http.dll;$(LidarrReferenceDir)/Lidarr.Api.V1.dll;$(LidarrReferenceDir)/NLog.dll;$(LidarrReferenceDir)/FluentValidation.dll;$(LidarrReferenceDir)/Newtonsoft.Json.dll;$(LidarrReferenceDir)/System.IO.Abstractions.dll">
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <Target Name="RequireLidarrReferences" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(LidarrReferenceDir)/Lidarr.Core.dll')"
+           Text="Run 'python scripts/prepare-lidarr.py' before building." />
+  </Target>
+</Project>

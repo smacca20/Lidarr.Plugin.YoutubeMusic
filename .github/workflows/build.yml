@@ -1,0 +1,56 @@
+name: Build Plugin
+
+on:
+  push:
+    branches:
+      - main
+    tags-ignore:
+      - '**'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  PLUGIN_NAME: Lidarr.Plugin.YoutubeMusic
+  PLUGIN_VERSION: 0.1.0.${{ github.run_number }}
+  DOTNET_VERSION: 8.0.405
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Prepare pinned Lidarr binaries
+        run: python3 scripts/prepare-lidarr.py
+
+      - name: Build
+        run: |
+          dotnet build src/Lidarr.Plugin.YoutubeMusic/Lidarr.Plugin.YoutubeMusic.csproj \
+            -c Release -p:PluginVersion=${{ env.PLUGIN_VERSION }}
+
+      - name: Zip Plugin
+        run: |
+          cp _temp/bin/Release/Lidarr.Plugin.YoutubeMusic/${{ env.PLUGIN_NAME }}.net8.0.zip /tmp/
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: ${{ env.PLUGIN_VERSION }}
+          name: ${{ env.PLUGIN_VERSION }}
+          draft: false
+          make_latest: true
+          files: /tmp/${{ env.PLUGIN_NAME }}.net8.0.zip

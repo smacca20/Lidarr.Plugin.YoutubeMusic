@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NzbDrone.Core</RootNamespace>
+    <AssemblyName>Lidarr.Plugin.YoutubeMusic</AssemblyName>
+    <Nullable>enable</Nullable>
+    <!-- CI passes PluginVersion (the release tag) so Lidarr sees the real installed version. -->
+    <Version Condition="'$(PluginVersion)' != ''">$(PluginVersion)</Version>
+    <Version Condition="'$(Version)' == ''">0.1.0</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <EnableAnalyzers>false</EnableAnalyzers>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <Import Project="../../LidarrReferences.targets" />
+
+  <Target Name="PackageRelease" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <PropertyGroup>
+      <ReleasePackageDir>$(IntermediateOutputPath)package/</ReleasePackageDir>
+    </PropertyGroup>
+    <RemoveDir Directories="$(ReleasePackageDir)" />
+    <MakeDir Directories="$(ReleasePackageDir)" />
+    <Copy SourceFiles="$(TargetPath);$(TargetDir)$(TargetName).pdb" DestinationFolder="$(ReleasePackageDir)" />
+    <ZipDirectory SourceDirectory="$(ReleasePackageDir)" DestinationFile="$(TargetDir)$(TargetName).net8.0.zip" Overwrite="true" />
+  </Target>
+
+</Project>
