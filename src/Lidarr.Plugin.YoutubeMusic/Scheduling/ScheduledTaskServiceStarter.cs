@@ -28,7 +28,6 @@ namespace NzbDrone.Core.Plugins.Scheduling
             _scheduledTaskService.CaptureExistingTasks();
         }
 
-        [EventHandleOrder(EventHandleOrder.Last)]
         public void Handle(ApplicationStartedEvent message)
         {
             _logger.Debug("[YTM] ApplicationStarted: initializing scheduled tasks");

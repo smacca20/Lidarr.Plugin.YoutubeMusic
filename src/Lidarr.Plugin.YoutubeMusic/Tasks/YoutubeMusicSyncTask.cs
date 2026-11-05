@@ -13,6 +13,8 @@ namespace NzbDrone.Core.Plugins
     /// </summary>
     public class YoutubeMusicSyncTask : ScheduledTaskBase<YoutubeMusicSettings>
     {
+        public override string Name => "YouTube Music Sync Scan";
+
         public override Type CommandType => typeof(YoutubeMusicSyncCommand);
 
         public override int IntervalMinutes =>
