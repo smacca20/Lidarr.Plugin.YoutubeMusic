@@ -95,7 +95,12 @@ class Syncer:
             album_name = rec.get("album")
 
             try:
-                artist_lookup = resolve_artist(self.client, artist_names)
+                artist_lookup = resolve_artist(
+                    self.client,
+                    artist_names,
+                    album_name=rec.get("album"),
+                    track_title=rec.get("title"),
+                )
             except LidarrError:
                 raise
 

@@ -52,8 +52,61 @@ def score(a: str | None, b: str | None) -> float:
     return 0.0
 
 
-def resolve_artist(client: LidarrClient, artist_names: list[str]) -> dict | None:
-    """Return the best /artist/lookup result matching one of the given names."""
+def compare_album(candidate: dict, album_name: str | None) -> float:
+    """How well a candidate artist's discography matches the given album name."""
+    if not album_name:
+        return 0.0
+    want = norm_album_title(album_name)
+    for al in (candidate.get("albums") or []):
+        at = norm_album_title(al.get("title", ""))
+        if not at:
+            continue
+        if at == want:
+            return 1.0
+        if want in at or at in want:
+            return 0.6
+    return 0.0
+
+
+def _pick_artist_candidate(
+    exact_candidates: list[dict],
+    album_name: str | None = None,
+    track_title: str | None = None,
+) -> dict | None:
+    """Among same-named artists, prefer the one whose album/title corroborates."""
+    if not exact_candidates:
+        return None
+    if len(exact_candidates) == 1 or not (album_name or track_title):
+        return exact_candidates[0]
+
+    best = exact_candidates[0]
+    best_score = -1.0
+    for candidate in exact_candidates:
+        sc = compare_album(candidate, album_name)
+        if sc <= 0.0 and track_title:
+            # If we have no album, use the track title to disambiguate.
+            want = norm(track_title)
+            for al in (candidate.get("albums") or []):
+                at = norm(al.get("title", ""))
+                if at and (at == want or want in at or at in want):
+                    sc = max(sc, 0.5)
+        if sc > best_score:
+            best, best_score = candidate, sc
+    return best
+
+
+def resolve_artist(
+    client: LidarrClient,
+    artist_names: list[str],
+    album_name: str | None = None,
+    track_title: str | None = None,
+) -> dict | None:
+    """Return the best /artist/lookup result for one of the given names.
+
+    Requires an EXACT normalized artist-name match (no fuzzy fallback, so a near-match
+    like 'Stefen Hauk' does NOT get pinned onto 'Stefan'). Same-named artists are then
+    disambiguated by album / track title. Returns None when there is no confident match.
+    """
     for name in artist_names:
         if not name:
             continue
@@ -61,21 +114,11 @@ def resolve_artist(client: LidarrClient, artist_names: list[str]) -> dict | None
             results = client.artist_lookup(name)
         except Exception:  # keep going even if one lookup fails
             continue
-        # Pass 1: exact normalized match on artist name.
-        for r in results:
-            if norm(r.get("artistName", "")) == norm(name):
-                return r
-    # Pass 2: loose match (substring) as a fallback.
-    for name in artist_names:
-        if not name:
-            continue
-        try:
-            results = client.artist_lookup(name)
-        except Exception:
-            continue
-        for r in results:
-            if score(r.get("artistName", ""), name) > 0.0:
-                return r
+        # Only confident matches: normalized name is identical.
+        exact = [r for r in results if norm(r.get("artistName", "")) == norm(name)]
+        if not exact:
+            continue  # no confident match for this artist token; try the next
+        return _pick_artist_candidate(exact, album_name, track_title)
     return None
 
 
