@@ -58,16 +58,18 @@ above and attaches the zip to a GitHub **Release** on `main`.
 
 ## Configure
 
-1. **Settings → Connect → + → "YouTube Music Sync"**
+1. **Settings → Metadata → "YouTube Music Sync Scan"** — this is the entry that
+   drives everything (the scheduled task). Configure it **here**:
    - **Python executable**: `python` (or absolute path on the Lidarr host)
    - **Sync project path**: absolute path to the ytmusic-lidarr-sync project
      (must contain `config.ini` and the package)
    - **CLI arguments**: `--search` (add + trigger album searches), `--add`, or
      empty for dry-run
-   - **Scan interval (minutes)**: how often to run (only read from the Metadata entry)
-   - Click **Test** (accepts; writes settings)
-2. **Settings → Metadata → "YouTube Music Sync Scan"** — ensure it is **enabled**
-   so the scheduled task is registered.
+   - **Scan interval (minutes)**: how often to run (minimum 60)
+   - Ensure the entry is **enabled** (an enabled entry registers the scheduled task).
+2. Optional: **Settings → Connect → + → "YouTube Music Sync"** — a settings surface
+   with a **Test** button. Not required for running; the scheduled entry above is
+   the source of truth.
 3. Optionally run once immediately from **System → Tasks → YouTube Music Sync**.
 
 The sync logs to `config/logs/Lidarr.debug.txt` (enable Debug/Trace logging in
