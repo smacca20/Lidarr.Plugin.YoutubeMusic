@@ -43,7 +43,7 @@ jobs:
 
       - name: Zip Plugin
         run: |
-          cp _temp/bin/Release/Lidarr.Plugin.YoutubeMusic/${{ env.PLUGIN_NAME }}.net8.0.zip /tmp/
+          cp src/Lidarr.Plugin.YoutubeMusic/bin/Release/net8.0/${{ env.PLUGIN_NAME }}.net8.0.zip /tmp/
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v3
