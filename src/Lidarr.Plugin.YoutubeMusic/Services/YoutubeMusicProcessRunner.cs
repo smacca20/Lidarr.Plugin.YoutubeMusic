@@ -46,12 +46,15 @@ namespace NzbDrone.Core.Plugins
                 WorkingDirectory = workingDir,
             };
 
+            psi.ArgumentList.Add("-m");
+            psi.ArgumentList.Add("ytmusic_lidarr_sync");
+
+            // CLI arguments are for the sync module, so they must come AFTER the module
+            // name:  python3 -m ytmusic_lidarr_sync --search   (not before -m).
             foreach (var token in SplitArgs(args))
             {
                 psi.ArgumentList.Add(token);
             }
-            psi.ArgumentList.Add("-m");
-            psi.ArgumentList.Add("ytmusic_lidarr_sync");
 
             // Provide the auth cookie in memory only (ephemeral env var), never on disk.
             if (!string.IsNullOrEmpty(settings.AuthCookie))
