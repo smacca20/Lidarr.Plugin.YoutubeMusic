@@ -59,7 +59,8 @@ above and attaches the zip to a GitHub **Release** on `main`.
 ## Configure
 
 1. **Settings → Metadata → "YouTube Music Sync Scan"** — this is the entry that
-   drives everything (the scheduled task). Configure it **here**:
+   drives everything (the scheduled task). Configure it **here** (see note below
+   on the auth cookie):
    - **Python executable**: `python` (or absolute path on the Lidarr host)
    - **Sync project path**: absolute path to the ytmusic-lidarr-sync project
      (must contain `config.ini` and the package)
@@ -70,6 +71,16 @@ above and attaches the zip to a GitHub **Release** on `main`.
 2. Optional: **Settings → Connect → + → "YouTube Music Sync"** — a settings surface
    with a **Test** button. Not required for running; the scheduled entry above is
    the source of truth.
+
+> **Authenticating (in-memory cookie):** the sync needs YouTube Music auth for
+> liked songs. The simplest, no-file method: in the Lidarr UI (on the entry above)
+> set **"YouTube Music cookie (auth)"** to the full `Cookie` header value from a
+> logged-in `music.youtube.com` session (DevTools → Network → any request →
+> Request Headers → Cookie). The plugin holds it **in memory** and passes it to the
+> sync process via an **environment variable** (ephemeral — never written to disk).
+> Leave it empty to use a `headers.json` file on the `headers_file` config path
+> instead. Cookies can expire; re-paste when rejected. (A more durable OAuth token
+> flow is possible via ytmusicapi's device flow — see project notes.)
 3. Optionally run once immediately from **System → Tasks → YouTube Music Sync**.
 
 The sync logs to `config/logs/Lidarr.debug.txt` (enable Debug/Trace logging in

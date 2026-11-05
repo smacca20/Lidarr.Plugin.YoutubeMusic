@@ -21,6 +21,9 @@ namespace NzbDrone.Core.Plugins
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        /// <summary>The env var the CLI reads for an in-memory cookie (see ytmusic_lidarr_sync/auth.py).</summary>
+        public const string AuthCookieEnvVar = "YTMLIDARR_AUTH_COOKIE";
+
         /// <summary>
         /// Runs the CLI synchronously, streaming output to the Lidarr log.
         /// Returns the process exit code (0 = success).
@@ -49,6 +52,13 @@ namespace NzbDrone.Core.Plugins
             }
             psi.ArgumentList.Add("-m");
             psi.ArgumentList.Add("ytmusic_lidarr_sync");
+
+            // Provide the auth cookie in memory only (ephemeral env var), never on disk.
+            if (!string.IsNullOrEmpty(settings.AuthCookie))
+            {
+                psi.Environment[AuthCookieEnvVar] = settings.AuthCookie;
+                _logger.Info("[YTM] passing YouTube Music cookie to sync via env (in memory)");
+            }
 
             using var process = new Process { StartInfo = psi };
             try

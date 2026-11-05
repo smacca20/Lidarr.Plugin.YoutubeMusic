@@ -19,6 +19,7 @@ namespace NzbDrone.Core.Plugins
             CliProjectPath = "";
             CliArgs = "--search";
             ScanIntervalMinutes = 1440;
+            AuthCookie = "";
         }
 
         [FieldDefinition(0, Label = "Python executable", Type = FieldType.Textbox,
@@ -36,6 +37,10 @@ namespace NzbDrone.Core.Plugins
         [FieldDefinition(3, Label = "Scan interval (minutes)", Type = FieldType.Number,
             HelpText = "How often to run the sync. Minimum 60 minutes. Only read from the scheduled entry (Settings > Metadata).")]
         public int ScanIntervalMinutes { get; set; }
+
+        [FieldDefinition(4, Label = "YouTube Music cookie (auth)", Type = FieldType.Password,
+            HelpText = "Optional. Open https://music.youtube.com in a browser, sign in, then copy the full 'Cookie' header value (DevTools > Network > any request > Request Headers > Cookie) and paste it here. It is held in memory and passed to the sync process via an environment variable - never written to disk. Leave empty to use headers_file instead.")]
+        public string AuthCookie { get; set; }
 
         public NzbDroneValidationResult Validate()
         {
