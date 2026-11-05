@@ -1,6 +1,9 @@
 using System;
+using System.Linq;
 using NLog;
+using NzbDrone.Core.Extras.Metadata;
 using NzbDrone.Core.Messaging.Commands;
+using NzbDrone.Core.Notifications;
 using NzbDrone.Core.Plugins.Scheduling;
 
 namespace NzbDrone.Core.Plugins
@@ -15,11 +18,19 @@ namespace NzbDrone.Core.Plugins
     public class YoutubeMusicSyncTask : ScheduledTaskBase<YoutubeMusicSettings>, IExecute<YoutubeMusicSyncCommand>
     {
         private readonly YoutubeMusicProcessRunner _runner;
+        private readonly Lazy<IMetadataFactory> _metadataFactory;
+        private readonly Lazy<INotificationFactory> _notificationFactory;
         private readonly Logger _logger;
 
-        public YoutubeMusicSyncTask(YoutubeMusicProcessRunner runner, Logger logger)
+        public YoutubeMusicSyncTask(
+            YoutubeMusicProcessRunner runner,
+            Lazy<IMetadataFactory> metadataFactory,
+            Lazy<INotificationFactory> notificationFactory,
+            Logger logger)
         {
             _runner = runner ?? throw new ArgumentNullException(nameof(runner));
+            _metadataFactory = metadataFactory ?? throw new ArgumentNullException(nameof(metadataFactory));
+            _notificationFactory = notificationFactory ?? throw new ArgumentNullException(nameof(notificationFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -35,9 +46,10 @@ namespace NzbDrone.Core.Plugins
         {
             try
             {
-                if (Definition?.Settings is YoutubeMusicSettings settings && settings.ScanIntervalMinutes >= 60)
+                var interval = ResolveSettings().ScanIntervalMinutes;
+                if (interval >= 60)
                 {
-                    return settings.ScanIntervalMinutes;
+                    return interval;
                 }
             }
             catch (Exception ex)
@@ -55,12 +67,69 @@ namespace NzbDrone.Core.Plugins
                 throw new ArgumentNullException(nameof(message));
             }
 
-            var settings = Definition?.Settings as YoutubeMusicSettings ?? new YoutubeMusicSettings();
+            var settings = ResolveSettings();
             var exit = _runner.Run(settings);
             message.SetResultMessage(
                 exit == 0
                     ? "YouTube Music sync completed successfully."
                     : $"YouTube Music sync exited with code {exit} (see Lidarr log).");
         }
+
+        /// <summary>
+        /// A manual "Run now" resolves an unbound executor whose <see cref="Definition"/>
+        /// is null, so fall back to the persisted provider definitions (the metadata task
+        /// entry and the Connect notification entry) to get the configured values.
+        /// </summary>
+        private YoutubeMusicSettings ResolveSettings()
+        {
+            var task = ResolveTaskSettings();
+            var notif = ResolveNotificationSettings();
+
+            return new YoutubeMusicSettings
+            {
+                PythonExecutable = Pick(task?.PythonExecutable, notif?.PythonExecutable, "python"),
+                CliProjectPath = Pick(task?.CliProjectPath, notif?.CliProjectPath, ""),
+                CliArgs = Pick(task?.CliArgs, notif?.CliArgs, "--search"),
+                ScanIntervalMinutes = task?.ScanIntervalMinutes ?? notif?.ScanIntervalMinutes ?? 1440,
+                AuthCookie = Pick(task?.AuthCookie, notif?.AuthCookie, ""),
+            };
+        }
+
+        private YoutubeMusicSettings? ResolveTaskSettings()
+        {
+            try
+            {
+                return _metadataFactory.Value.All()
+                    .Where(d => d.Implementation == nameof(YoutubeMusicSyncTask))
+                    .Select(d => d.Settings)
+                    .OfType<YoutubeMusicSettings>()
+                    .FirstOrDefault()
+                    ?? Definition?.Settings as YoutubeMusicSettings;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "[YTM] failed to read task settings");
+                return Definition?.Settings as YoutubeMusicSettings;
+            }
+        }
+
+        private YoutubeMusicSettings? ResolveNotificationSettings()
+        {
+            try
+            {
+                return _notificationFactory.Value.All()
+                    .Where(d => d.Settings is YoutubeMusicSettings)
+                    .Select(d => (YoutubeMusicSettings)d.Settings)
+                    .FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "[YTM] failed to read notification settings");
+                return null;
+            }
+        }
+
+        private static string Pick(string a, string b, string def)
+            => !string.IsNullOrWhiteSpace(a) ? a : (!string.IsNullOrWhiteSpace(b) ? b : def);
     }
 }
