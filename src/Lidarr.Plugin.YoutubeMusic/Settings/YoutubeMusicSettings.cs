@@ -34,8 +34,8 @@ namespace NzbDrone.Core.Plugins
             AuthCookie = "";
             MonitorAlbums = true;
             Monitored = true;
-            QualityProfileId = 1;
-            MetadataProfileId = 1;
+            QualityProfileId = 0;   // 0 = auto-detect (prefers Lossless)
+            MetadataProfileId = 0;  // 0 = auto-detect (prefers Standard)
         }
 
         [FieldDefinition(0, Label = "Python executable", Type = FieldType.Textbox,
@@ -67,12 +67,12 @@ namespace NzbDrone.Core.Plugins
         public bool Monitored { get; set; } = true;
 
         [FieldDefinition(7, Label = "Quality Profile ID", Type = FieldType.Number,
-            HelpText = "Lidarr quality profile id applied to added artists (Settings > Profiles > Quality). Default 1.")]
-        public int QualityProfileId { get; set; } = 1;
+            HelpText = "Lidarr quality profile id for added artists (Settings > Profiles > Quality). 0 = auto-detect the best (prefers 'Lossless'). On this setup: 1=Any, 2=Lossless, 3=Standard.")]
+        public int QualityProfileId { get; set; } = 0;
 
         [FieldDefinition(8, Label = "Metadata Profile ID", Type = FieldType.Number,
-            HelpText = "Lidarr metadata profile id applied to added artists (Settings > Profiles > Metadata). Default 1.")]
-        public int MetadataProfileId { get; set; } = 1;
+            HelpText = "Lidarr metadata profile id for added artists (Settings > Profiles > Metadata). 0 = auto-detect (prefers 'Standard'). On this setup: 1=Standard, 2=None, 3=Albums and Singles.")]
+        public int MetadataProfileId { get; set; } = 0;
 
         public NzbDroneValidationResult Validate()
         {

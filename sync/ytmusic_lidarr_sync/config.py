@@ -15,8 +15,8 @@ class LidarrConfig:
     url: str = "http://localhost:8686"
     api_key: str = ""
     root_folder: str = ""
-    quality_profile_id: int = 1
-    metadata_profile_id: int = 1
+    quality_profile_id: int = 0  # 0 = auto-detect best (prefers Lossless)
+    metadata_profile_id: int = 0  # 0 = auto-detect best (prefers Standard)
     language_profile_id: int = 1
     album_folder: bool = True
     monitor_albums: bool = True

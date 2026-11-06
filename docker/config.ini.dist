@@ -5,8 +5,8 @@
 url = http://localhost:8686
 api_key =
 root_folder = /media/music
-quality_profile_id = 1
-metadata_profile_id = 1
+quality_profile_id = 0
+metadata_profile_id = 0
 language_profile_id = 1
 album_folder = true
 monitor_albums = true

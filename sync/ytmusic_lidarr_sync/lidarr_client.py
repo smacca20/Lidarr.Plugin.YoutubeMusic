@@ -27,6 +27,11 @@ class LidarrClient:
         self.language_profile_id = config.language_profile_id
         self.album_folder = config.album_folder
         self.monitor_albums = config.monitor_albums
+        self.monitored = config.monitored
+
+        # caches for "0 = auto-detect" profile resolution
+        self._resolved_quality: int | None = None
+        self._resolved_metadata: int | None = None
 
         self.session = requests.Session()
         self.session.headers.update(
@@ -109,13 +114,45 @@ class LidarrClient:
         if artist_ids:
             self.command("ArtistSearch", artistIds=list(artist_ids))
 
+    # -- profile auto-resolution (0 = auto-detect) ----------------------
+    def quality_profile(self) -> int:
+        if self.quality_profile_id > 0:
+            return self.quality_profile_id
+        if self._resolved_quality is None:
+            self._resolved_quality = self._auto_profile(
+                "/api/v1/qualityprofile", ("lossless", "flac", "hi-res", "hifi")
+            )
+        return self._resolved_quality
+
+    def metadata_profile(self) -> int:
+        if self.metadata_profile_id > 0:
+            return self.metadata_profile_id
+        if self._resolved_metadata is None:
+            self._resolved_metadata = self._auto_profile("/api/v1/metadataprofile", ("standard",))
+        return self._resolved_metadata
+
+    def _auto_profile(self, path: str, preferred: tuple[str, ...]) -> int:
+        """Pick the best profile: a preferred name match, else the lowest id."""
+        try:
+            profiles = self.get(path) or []
+            candidates = [p for p in profiles if p.get("id")]
+            for want in preferred:
+                for profile in candidates:
+                    if want.lower() in (profile.get("name") or "").lower():
+                        return int(profile["id"])
+            if candidates:
+                return int(min(candidates, key=lambda p: p["id"])["id"])
+        except Exception:  # noqa: BLE001 - fall back to 1 on any failure
+            pass
+        return 1
+
     # -- builders ----------------------------------------------------------
     def build_add_artist_payload(self, lookup_result: dict, search_missing: bool = False) -> dict:
         """Expand a /artist/lookup result into a POST /api/v1/artist body."""
         payload = dict(lookup_result)
         payload["rootFolderPath"] = self.root_folder
-        payload["qualityProfileId"] = self.quality_profile_id
-        payload["metadataProfileId"] = self.metadata_profile_id
+        payload["qualityProfileId"] = self.quality_profile()
+        payload["metadataProfileId"] = self.metadata_profile()
         payload["languageProfileId"] = self.language_profile_id
         payload["albumFolder"] = self.album_folder
         payload["monitored"] = self.monitored
