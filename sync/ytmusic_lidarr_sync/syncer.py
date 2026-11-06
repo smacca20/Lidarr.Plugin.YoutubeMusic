@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .lidarr_client import LidarrClient, LidarrError
-from .matcher import resolve_album_metadata, resolve_artist
+from .matcher import norm_album_title, resolve_album_metadata, resolve_artist
 
 
 @dataclass
@@ -167,7 +167,10 @@ class Syncer:
             # Fallback: resolve the release via the album-lookup endpoint and
             # prefer an existing Lidarr album for that artist if present.
             first_artist = rec["artists"][0] if rec["artists"] else ""
-            meta = resolve_album_metadata(self.client, first_artist, album_name)
+            # Search by the edition-stripped title (e.g. "MTV Unplugged Live" -> "MTV
+            # Unplugged") so Lidarr's /album/lookup is more likely to locate the base
+            # release even when it lives under a differently-keyed artist entry.
+            meta = resolve_album_metadata(self.client, first_artist, norm_album_title(album_name))
             if meta is None:
                 return None
             meta_artist = meta.get("artist", {})

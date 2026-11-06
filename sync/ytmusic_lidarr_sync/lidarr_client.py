@@ -202,14 +202,18 @@ class LidarrClient:
         return None
 
     def find_album_in_artist(self, albums: list[dict], title: str) -> dict | None:
-        """Find an album by (normalized) title among a list of album resources."""
-        from .matcher import norm
+        """Find an album by title among album resources.
 
-        tn = norm(title)
+        Uses edition-marker-stripping normalization so e.g. YT's "MTV Unplugged (Live)"
+        matches Lidarr's "MTV Unplugged"; falls back to substring containment.
+        """
+        from .matcher import norm_album_title
+
+        tn = norm_album_title(title)
         exact: list[dict] = []
         partial: list[dict] = []
         for al in albums:
-            at = norm(al.get("title", ""))
+            at = norm_album_title(al.get("title", ""))
             if not at:
                 continue
             if at == tn:
