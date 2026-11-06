@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text;
 using NLog;
 using NzbDrone.Core.Extras.Metadata;
 using NzbDrone.Core.Messaging.Commands;
@@ -68,11 +69,28 @@ namespace NzbDrone.Core.Plugins
             }
 
             var settings = ResolveSettings();
-            var exit = _runner.Run(settings);
-            message.SetResultMessage(
-                exit == 0
+            var output = new StringBuilder();
+            var exit = _runner.Run(settings, onOutput: line => output.AppendLine(line));
+            // This Lidarr build's Command API has no SetMessage for live line-by-line
+            // streaming, so we present the full sync report via the completion message,
+            // which System -> Tasks / history shows in the UI.
+            message.SetResultMessage(BuildSummary(output.ToString(), exit));
+        }
+
+        /// <summary>Builds a full sync summary for the command completion message.</summary>
+        private static string BuildSummary(string output, int exit)
+        {
+            var trimmed = (output ?? string.Empty).Trim();
+            if (exit == 0)
+            {
+                return string.IsNullOrWhiteSpace(trimmed)
                     ? "YouTube Music sync completed successfully."
-                    : $"YouTube Music sync exited with code {exit} (see Lidarr log).");
+                    : trimmed;
+            }
+
+            const int keep = 2000;
+            var tail = trimmed.Length > keep ? "..." + trimmed.Substring(trimmed.Length - keep) : trimmed;
+            return $"YouTube Music sync exited with code {exit}. (See Lidarr log for details.)\n{tail}";
         }
 
         /// <summary>

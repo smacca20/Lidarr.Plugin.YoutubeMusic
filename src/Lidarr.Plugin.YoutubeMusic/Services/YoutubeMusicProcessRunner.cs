@@ -28,7 +28,7 @@ namespace NzbDrone.Core.Plugins
         /// Runs the CLI synchronously, streaming output to the Lidarr log.
         /// Returns the process exit code (0 = success).
         /// </summary>
-        public int Run(YoutubeMusicSettings settings, string? moduleArgs = null)
+        public int Run(YoutubeMusicSettings settings, string? moduleArgs = null, Action<string>? onOutput = null)
         {
             var py = (settings.PythonExecutable ?? "python").Trim();
             var args = (moduleArgs ?? settings.CliArgs ?? "--search");
@@ -93,8 +93,8 @@ namespace NzbDrone.Core.Plugins
             // Read asynchronously so a chatty CLI cannot deadlock the pipes.
             var stdout = new StringBuilder();
             var stderr = new StringBuilder();
-            process.OutputDataReceived += (_, e) => { if (e.Data != null) stdout.AppendLine(e.Data); };
-            process.ErrorDataReceived += (_, e) => { if (e.Data != null) stderr.AppendLine(e.Data); };
+            process.OutputDataReceived += (_, e) => { if (e.Data != null) { stdout.AppendLine(e.Data); onOutput?.Invoke(e.Data); } };
+            process.ErrorDataReceived += (_, e) => { if (e.Data != null) { stderr.AppendLine(e.Data); onOutput?.Invoke("[stderr] " + e.Data); } };
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
