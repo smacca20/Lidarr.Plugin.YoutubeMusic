@@ -15,8 +15,8 @@ class LidarrConfig:
     url: str = "http://localhost:8686"
     api_key: str = ""
     root_folder: str = ""
-    quality_profile_id: int = 0  # 0 = auto-detect best (prefers Lossless)
-    metadata_profile_id: int = 0  # 0 = auto-detect best (prefers Standard)
+    quality_profile: str = ""   # profile NAME (or numeric id); blank = auto (prefers Lossless)
+    metadata_profile: str = ""  # profile NAME (or numeric id); blank = auto (prefers Standard)
     language_profile_id: int = 1
     album_folder: bool = True
     monitor_albums: bool = True
@@ -108,12 +108,15 @@ def load_config(path: str | None = None) -> Config:
     lidarr.url = _get("lidarr", "url", lidarr.url).strip().rstrip("/")
     lidarr.api_key = _get("lidarr", "api_key", "").strip()
     lidarr.root_folder = _get("lidarr", "root_folder", "").strip()
-    lidarr.quality_profile_id = _parse_int(
-        _get("lidarr", "quality_profile_id", ""), lidarr.quality_profile_id
-    )
-    lidarr.metadata_profile_id = _parse_int(
-        _get("lidarr", "metadata_profile_id", ""), lidarr.metadata_profile_id
-    )
+    # Profile can be a NAME (e.g. Lossless / Standard) or a legacy numeric id.
+    _qname = _get("lidarr", "quality_profile", "").strip()
+    _qid = _parse_int(_get("lidarr", "quality_profile_id", ""), 0)
+    lidarr.quality_profile = _qname or (str(_qid) if _qid > 0 else "")
+
+    _mname = _get("lidarr", "metadata_profile", "").strip()
+    _mid = _parse_int(_get("lidarr", "metadata_profile_id", ""), 0)
+    lidarr.metadata_profile = _mname or (str(_mid) if _mid > 0 else "")
+
     lidarr.language_profile_id = _parse_int(
         _get("lidarr", "language_profile_id", ""), lidarr.language_profile_id
     )

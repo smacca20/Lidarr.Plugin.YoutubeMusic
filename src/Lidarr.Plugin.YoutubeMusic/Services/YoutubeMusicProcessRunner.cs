@@ -64,9 +64,9 @@ namespace NzbDrone.Core.Plugins
                 ? "--monitored"
                 : "--no-monitored");
             psi.ArgumentList.Add("--quality-profile");
-            psi.ArgumentList.Add(settings.QualityProfileId.ToString());
+            psi.ArgumentList.Add(string.IsNullOrWhiteSpace(settings.QualityProfile) ? "" : settings.QualityProfile);
             psi.ArgumentList.Add("--metadata-profile");
-            psi.ArgumentList.Add(settings.MetadataProfileId.ToString());
+            psi.ArgumentList.Add(string.IsNullOrWhiteSpace(settings.MetadataProfile) ? "" : settings.MetadataProfile);
 
             // Provide the auth cookie in memory only (ephemeral env var), never on disk.
             if (!string.IsNullOrEmpty(settings.AuthCookie))

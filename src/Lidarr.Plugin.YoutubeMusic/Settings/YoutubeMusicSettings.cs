@@ -34,8 +34,8 @@ namespace NzbDrone.Core.Plugins
             AuthCookie = "";
             MonitorAlbums = true;
             Monitored = true;
-            QualityProfileId = 0;   // 0 = auto-detect (prefers Lossless)
-            MetadataProfileId = 0;  // 0 = auto-detect (prefers Standard)
+            QualityProfile = "";   // blank = auto-detect (prefers Lossless)
+            MetadataProfile = "";  // blank = auto-detect (prefers Standard)
         }
 
         [FieldDefinition(0, Label = "Python executable", Type = FieldType.Textbox,
@@ -66,13 +66,13 @@ namespace NzbDrone.Core.Plugins
             HelpText = "Whether newly added artists are set as Monitored. Default ON.")]
         public bool Monitored { get; set; } = true;
 
-        [FieldDefinition(7, Label = "Quality Profile ID", Type = FieldType.Number,
-            HelpText = "Lidarr quality profile id for added artists (Settings > Profiles > Quality). 0 = auto-detect the best (prefers 'Lossless'). On this setup: 1=Any, 2=Lossless, 3=Standard.")]
-        public int QualityProfileId { get; set; } = 0;
+        [FieldDefinition(7, Label = "Quality Profile (name)", Type = FieldType.Textbox,
+            HelpText = "Lidarr quality profile by NAME for added artists (Settings > Profiles > Quality), e.g. Lossless / Standard / Any. Leave blank for auto-detect (prefers Lossless).")]
+        public string QualityProfile { get; set; } = "";
 
-        [FieldDefinition(8, Label = "Metadata Profile ID", Type = FieldType.Number,
-            HelpText = "Lidarr metadata profile id for added artists (Settings > Profiles > Metadata). 0 = auto-detect (prefers 'Standard'). On this setup: 1=Standard, 2=None, 3=Albums and Singles.")]
-        public int MetadataProfileId { get; set; } = 0;
+        [FieldDefinition(8, Label = "Metadata Profile (name)", Type = FieldType.Textbox,
+            HelpText = "Lidarr metadata profile by NAME for added artists (Settings > Profiles > Metadata), e.g. Standard / None / Albums and Singles. Leave blank for auto-detect (prefers Standard).")]
+        public string MetadataProfile { get; set; } = "";
 
         public NzbDroneValidationResult Validate()
         {

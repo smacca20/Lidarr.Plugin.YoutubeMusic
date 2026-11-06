@@ -22,8 +22,8 @@ class LidarrClient:
         self.url = config.url.rstrip("/")
         self.api_key = config.api_key
         self.root_folder = config.root_folder
-        self.quality_profile_id = config.quality_profile_id
-        self.metadata_profile_id = config.metadata_profile_id
+        self._desired_quality = config.quality_profile
+        self._desired_metadata = config.metadata_profile
         self.language_profile_id = config.language_profile_id
         self.album_folder = config.album_folder
         self.monitor_albums = config.monitor_albums
@@ -114,37 +114,53 @@ class LidarrClient:
         if artist_ids:
             self.command("ArtistSearch", artistIds=list(artist_ids))
 
-    # -- profile auto-resolution (0 = auto-detect) ----------------------
+    # -- profile resolution (by NAME or numeric id; blank = auto-detect) --
     def quality_profile(self) -> int:
-        if self.quality_profile_id > 0:
-            return self.quality_profile_id
         if self._resolved_quality is None:
-            self._resolved_quality = self._auto_profile(
-                "/api/v1/qualityprofile", ("lossless", "flac", "hi-res", "hifi")
+            self._resolved_quality = self._resolve_profile(
+                "/api/v1/qualityprofile", self._desired_quality, ("lossless", "flac", "hi-res", "hifi")
             )
         return self._resolved_quality
 
     def metadata_profile(self) -> int:
-        if self.metadata_profile_id > 0:
-            return self.metadata_profile_id
         if self._resolved_metadata is None:
-            self._resolved_metadata = self._auto_profile("/api/v1/metadataprofile", ("standard",))
+            self._resolved_metadata = self._resolve_profile(
+                "/api/v1/metadataprofile", self._desired_metadata, ("standard",)
+            )
         return self._resolved_metadata
 
-    def _auto_profile(self, path: str, preferred: tuple[str, ...]) -> int:
-        """Pick the best profile: a preferred name match, else the lowest id."""
+    def _resolve_profile(self, path: str, desired: str, auto_preferred: tuple[str, ...]) -> int:
+        """Resolve a profile to its id by NAME (exact, then substring), or numeric id.
+        Blank/auto picks a preferred name match, else the lowest id."""
         try:
             profiles = self.get(path) or []
             candidates = [p for p in profiles if p.get("id")]
-            for want in preferred:
-                for profile in candidates:
-                    if want.lower() in (profile.get("name") or "").lower():
-                        return int(profile["id"])
-            if candidates:
-                return int(min(candidates, key=lambda p: p["id"])["id"])
-        except Exception:  # noqa: BLE001 - fall back to 1 on any failure
-            pass
-        return 1
+            if not candidates:
+                return 1
+            desired = (str(desired) if desired is not None else "").strip()
+            if not desired:
+                return self._auto_pick(candidates, auto_preferred)
+            if desired.isdigit():
+                return int(desired)
+            dn = desired.lower()
+            for profile in candidates:
+                if (profile.get("name") or "").strip().lower() == dn:
+                    return int(profile["id"])
+            for profile in candidates:
+                nm = (profile.get("name") or "").lower()
+                if dn in nm or nm in dn:
+                    return int(profile["id"])
+            # requested name not found -> fall back to auto
+            return self._auto_pick(candidates, auto_preferred)
+        except Exception:  # noqa: BLE001
+            return 1
+
+    def _auto_pick(self, candidates: list[dict], preferred: tuple[str, ...]) -> int:
+        for want in preferred:
+            for profile in candidates:
+                if want.lower() in (profile.get("name") or "").lower():
+                    return int(profile["id"])
+        return int(min(candidates, key=lambda p: p["id"])["id"])
 
     # -- builders ----------------------------------------------------------
     def build_add_artist_payload(self, lookup_result: dict, search_missing: bool = False) -> dict:
