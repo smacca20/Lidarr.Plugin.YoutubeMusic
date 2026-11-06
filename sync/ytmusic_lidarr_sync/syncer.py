@@ -151,17 +151,18 @@ class Syncer:
 
     def _match_album(self, artist_obj: dict, rec: dict) -> dict | None:
         album_name = rec.get("album")
+        year = rec.get("year")  # optional YT track year, used only as a tie-breaker
         artist_id = artist_obj.get("id")
         albums = self.client.get_albums(artist_id) if artist_id else []
 
-        matched = self.client.find_album_in_artist(albums, album_name)
+        matched = self.client.find_album_in_artist(albums, album_name, year)
         if matched is None and artist_id and self.options.add_missing:
             # Artist may have just been added; ask Lidarr to refresh so its
             # discography (and album IDs) are imported, then re-scan. Never run
             # in dry-run mode (that would mutate Lidarr).
             self.client.refresh_artist(artist_id)
             albums = self.client.get_albums(artist_id)
-            matched = self.client.find_album_in_artist(albums, album_name)
+            matched = self.client.find_album_in_artist(albums, album_name, year)
 
         if matched is None:
             # Fallback: resolve the release via the album-lookup endpoint and
@@ -170,7 +171,9 @@ class Syncer:
             # Search by the edition-stripped title (e.g. "MTV Unplugged Live" -> "MTV
             # Unplugged") so Lidarr's /album/lookup is more likely to locate the base
             # release even when it lives under a differently-keyed artist entry.
-            meta = resolve_album_metadata(self.client, first_artist, norm_album_title(album_name))
+            meta = resolve_album_metadata(
+                self.client, first_artist, norm_album_title(album_name), year
+            )
             if meta is None:
                 return None
             meta_artist = meta.get("artist", {})
@@ -178,6 +181,7 @@ class Syncer:
             local = self.client.find_album_in_artist(
                 self.client.get_albums(meta_artist_id),
                 meta.get("title", album_name),
+                year,
             )
             matched = local or meta if local else meta
 

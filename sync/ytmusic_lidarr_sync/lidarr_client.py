@@ -201,11 +201,17 @@ class LidarrClient:
                 return artist
         return None
 
-    def find_album_in_artist(self, albums: list[dict], title: str) -> dict | None:
+    def find_album_in_artist(
+        self, albums: list[dict], title: str, year=None
+    ) -> dict | None:
         """Find an album by title among album resources.
 
         Uses edition-marker-stripping normalization so e.g. YT's "MTV Unplugged (Live)"
         matches Lidarr's "MTV Unplugged"; falls back to substring containment.
+
+        ``year`` (optional, e.g. "1992") is used ONLY to break ties among same-titled
+        candidates (prefer the edition whose year matches); it never accepts a release
+        whose title or artist does not already match.
         """
         from .matcher import norm_album_title
 
@@ -221,11 +227,25 @@ class LidarrClient:
             elif tn in at or at in tn:
                 partial.append(al)
 
+        def _album_year(al: dict) -> str:
+            rd = al.get("releaseDate") or al.get("year") or ""
+            return str(rd)[:4]
+
+        def _year_ok(al: dict) -> int:
+            if not year:
+                return 0
+            return 0 if _album_year(al) == str(year)[:4] else 1
+
         def _prefer(candidates: list[dict]) -> dict | None:
-            # Prefer real "Album" releases over EPs/singles, then monitored.
+            # Prefer real "Album" releases over EPs/singles; then (if a year is known)
+            # the edition whose year matches; then monitored.
             def key(al: dict) -> tuple:
                 is_album = al.get("albumType") == "Album"
-                return (0 if is_album else 1, 0 if al.get("monitored") else 1)
+                return (
+                    0 if is_album else 1,
+                    _year_ok(al),
+                    0 if al.get("monitored") else 1,
+                )
 
             if not candidates:
                 return None

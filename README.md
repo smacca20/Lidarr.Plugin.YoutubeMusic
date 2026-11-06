@@ -55,6 +55,11 @@ YT Music -> track {title, artist(s), album}
 - Artists must match by **exact normalized name** (no fuzzy fallback — a near-miss like
   `Stefen Hauk` is **not** added as `Stefan`). Same-named artists are disambiguated by the
   track's album, then title. No confident match => the track is skipped and reported.
+- Editions map back to the base album: YT's `MTV Unplugged (Live)` matches Lidarr's `MTV
+  Unplugged` (earlier editions match too). When an artist has several same-titled releases,
+  the YT track's **release year** (when YT provides one) is used as a tie-breaker to prefer
+  the right edition. The artist is **always name-verified**, so a different artist's
+  same-titled album (e.g. Nirvana's `MTV Unplugged`) is never attached to a Pearl Jam track.
 - Albums/singles are matched by normalized title against the artist's Lidarr albums (with a
   MusicBrainz fallback). Matched ones are shown under **Albums matched** and **monitored**;
   unmatched albums are listed under **Albums not found** and left unmonitored (artist still added).

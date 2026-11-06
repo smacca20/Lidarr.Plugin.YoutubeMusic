@@ -131,11 +131,19 @@ def extract_tracks(yt_items) -> list[dict]:
         if not artists:
             continue
 
+        year = item.get("year")
+        if isinstance(year, str):
+            year = year.strip()
+            year = year if year.isdigit() else None
+        else:
+            year = None
+
         records.append(
             {
                 "title": title,
                 "artists": artists,
                 "album": album,
+                "year": year,
                 "videoId": item.get("videoId"),
                 "videoType": video_type,
             }

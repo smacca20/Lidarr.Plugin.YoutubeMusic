@@ -123,9 +123,14 @@ def resolve_artist(
 
 
 def resolve_album_metadata(
-    client: LidarrClient, artist_name: str, album_name: str
+    client: LidarrClient, artist_name: str, album_name: str, year: str | None = None
 ) -> dict | None:
-    """Find an /album/lookup result whose title+artist match YT Music naming."""
+    """Find an /album/lookup result whose title+artist match YT Music naming.
+
+    ``year`` (optional) only adds a small preference for the edition whose year matches;
+    a candidate is still rejected unless its title AND artist match, so it never picks a
+    wrong artist's same-titled album, nor a non-matching title just because the year fits.
+    """
     if not album_name:
         return None
     term = f"{album_name} {artist_name}"
@@ -137,6 +142,11 @@ def resolve_album_metadata(
     best: dict | None = None
     best_total = 0.0
     for r in results:
+        year_penalty = 0.0
+        if year:
+            rd = r.get("releaseDate") or r.get("year") or ""
+            year_penalty = 0.0 if str(rd)[:4] == str(year)[:4] else 0.3
+
         artist_info = r.get("artist")
         found_artist = ""
         if isinstance(artist_info, dict):
@@ -148,9 +158,9 @@ def resolve_album_metadata(
         an = norm_album_title(album_name)
         artist_score = score(found_artist, artist_name)
         if at == an and artist_score >= 0.6:
-            total = 1.0 + artist_score
+            total = 1.0 + artist_score - year_penalty
         elif at and (at in an or an in at) and artist_score >= 0.6:
-            total = 0.5 + artist_score
+            total = 0.5 + artist_score - year_penalty
         else:
             continue
         if total > best_total:
