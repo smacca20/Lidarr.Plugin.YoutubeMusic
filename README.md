@@ -54,7 +54,9 @@ YT Music -> track {title, artist(s), album}
 **Matching is conservative:**
 - Artists must match by **exact normalized name** (no fuzzy fallback — a near-miss like
   `Stefen Hauk` is **not** added as `Stefan`). Same-named artists are disambiguated by the
-  track's album, then title. No confident match => the track is skipped and reported.
+  track's album, then title. If several same-named artists match and **none** is clearly
+  corroborated (e.g. an ambiguous "Martin Miller"), the track is skipped and reported as
+  **ambiguous** — the sync **never auto-adds a random same-named artist**.
 - Editions map back to the base album: YT's `MTV Unplugged (Live)` matches Lidarr's `MTV
   Unplugged` (earlier editions match too). When an artist has several same-titled releases,
   the YT track's **release year** (when YT provides one) is used as a tie-breaker to prefer

@@ -4,7 +4,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .lidarr_client import LidarrClient, LidarrError
-from .matcher import norm_album_title, resolve_album_metadata, resolve_artist
+from .matcher import (
+    AmbiguousArtistError,
+    norm_album_title,
+    resolve_album_metadata,
+    resolve_artist,
+)
 
 
 @dataclass
@@ -102,6 +107,22 @@ class Syncer:
                     album_name=rec.get("album"),
                     track_title=rec.get("title"),
                 )
+            except AmbiguousArtistError:
+                # The artist name matches several Lidarr artists and none is decisively
+                # corroborated by album/title. Never guess a random same-named artist.
+                result.unmatched.append(
+                    {
+                        "title": title,
+                        "artists": artist_names,
+                        "album": album_name,
+                        "reason": (
+                            "ambiguous artist: multiple artists named "
+                            f"'{artist_names[0] if artist_names else '?'}' in Lidarr; "
+                            "not auto-added (resolve manually)"
+                        ),
+                    }
+                )
+                continue
             except LidarrError:
                 raise
 

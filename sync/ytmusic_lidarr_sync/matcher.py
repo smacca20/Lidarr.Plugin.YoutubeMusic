@@ -68,31 +68,49 @@ def compare_album(candidate: dict, album_name: str | None) -> float:
     return 0.0
 
 
+class AmbiguousArtistError(ValueError):
+    """Raised when a name matches several artists and none is decisively corroborated.
+
+    We refuse to auto-add a random same-named artist (which could be the wrong person),
+    instead surfacing the ambiguity so the user can resolve it.
+    """
+
+
 def _pick_artist_candidate(
     exact_candidates: list[dict],
     album_name: str | None = None,
     track_title: str | None = None,
 ) -> dict | None:
-    """Among same-named artists, prefer the one whose album/title corroborates."""
+    """Among same-named artists, pick the one whose album/title clearly corroborates.
+
+    Returns ``None`` when the choice is ambiguous (multiple same-named artists and
+    none is uniquely corroborated) so we do NOT guess a wrong artist.
+    """
     if not exact_candidates:
         return None
-    if len(exact_candidates) == 1 or not (album_name or track_title):
+    # A single exact-name match is confident even without album corroboration.
+    if len(exact_candidates) == 1:
         return exact_candidates[0]
 
-    best = exact_candidates[0]
-    best_score = -1.0
+    scored: list[tuple[float, dict]] = []
     for candidate in exact_candidates:
         sc = compare_album(candidate, album_name)
         if sc <= 0.0 and track_title:
-            # If we have no album, use the track title to disambiguate.
+            # If the album gives no corroboration, use the track title as a weaker signal.
             want = norm(track_title)
             for al in (candidate.get("albums") or []):
                 at = norm(al.get("title", ""))
                 if at and (at == want or want in at or at in want):
                     sc = max(sc, 0.5)
-        if sc > best_score:
-            best, best_score = candidate, sc
-    return best
+        scored.append((sc, candidate))
+
+    best_score = max((s for s, _ in scored), default=0.0)
+    if best_score <= 0.0:
+        return None  # multiple same-named artists, none corroborated -> ambiguous
+    tops = [c for s, c in scored if s == best_score]
+    if len(tops) > 1:
+        return None  # tied positive corroboration -> still ambiguous
+    return tops[0]
 
 
 def resolve_artist(
@@ -118,7 +136,10 @@ def resolve_artist(
         exact = [r for r in results if norm(r.get("artistName", "")) == norm(name)]
         if not exact:
             continue  # no confident match for this artist token; try the next
-        return _pick_artist_candidate(exact, album_name, track_title)
+        picked = _pick_artist_candidate(exact, album_name, track_title)
+        if picked is None:
+            raise AmbiguousArtistError(name)
+        return picked
     return None
 
 
