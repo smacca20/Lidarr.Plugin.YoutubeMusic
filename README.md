@@ -11,6 +11,18 @@ executes the proven, Python-based sync engine from this repo.
 > registers a scheduled task (Settings → Metadata) with a configurable
 > interval, plus a settings surface under Settings → Connect.
 
+## Quick install (recommended)
+
+1. In Lidarr: **System → Plugins**, paste this repository's URL and choose **Install**:
+   `https://github.com/smacca20/Lidarr.Plugin.YoutubeMusic`
+2. **Restart Lidarr** to load the plugin.
+3. Configure under **Settings → Metadata → "YouTube Music Sync Scan"** (see
+   [Configure](#configure)), then run it from **System → Tasks**.
+
+> Requires plugin-capable Lidarr (**`develop`/`nightly`, ≥ 3.1.2.4938**). System → Plugins
+> installs the latest **GitHub Release** (built automatically by this repo's CI from `main`).
+> Building the plugin yourself is optional — see [Build from source](#build-from-source-optional).
+
 ## How it works
 
 ```
@@ -83,15 +95,18 @@ Flags: `--add`, `--search`, `--monitor-albums/--no-monitor-albums`, `--monitored
 ## Prerequisites
 
 - **Lidarr 3.1.2.4938+ on the `develop` or `nightly` branch** (the `master`
-  branch does not support plugins). Verified working template target: 3.1.3.4968.
-- The **ytmusic-lidarr-sync Python CLI** (this repo) installed on the Lidarr
-  host, with `pip install -r requirements.txt`, a `config.ini`, and a
-  `headers.json` from `python -m ytmusicapi setup`.
-- **.NET 8 SDK** to build (or rely on the included GitHub Action).
+  branch does not support plugins).
+- **YouTube Music auth** — pasted into the plugin's auth field (cookie or OAuth; see
+  [Configure](#configure)). No Python install needed: the sync engine is bundled in
+  `sync/` (and already inside the baked image), so Lidarr runs it itself.
+- **.NET 8 SDK** — only if you **build from source** (see
+  [Build from source](#build-from-source-optional)); the quick install needs no build.
 
-## Build
+## Build from source (optional)
 
-Local:
+Most users won't need this — **use [Quick install](#quick-install-recommended)**, which pulls
+the pre-built plugin from this repo's GitHub Release (built by CI on every `main` push). Build
+from source only if you're compiling the plugin yourself or working on a fork:
 
 ```bash
 cd plugin/Lidarr.Plugin.YoutubeMusic
@@ -101,15 +116,12 @@ dotnet build src/Lidarr.Plugin.YoutubeMusic/Lidarr.Plugin.YoutubeMusic.csproj \
 ```
 
 The output zip is `_temp/bin/Release/Lidarr.Plugin.YoutubeMusic/Lidarr.Plugin.YoutubeMusic.net8.0.zip`.
-The included GitHub Action (`<repo>/.github/workflows/build.yml`) does all of the
-above and attaches the zip to a GitHub **Release** on `main`.
+The included GitHub Action (`<repo>/.github/workflows/build.yml`) does the same build and
+attaches the zip to a GitHub **Release** on `main`.
 
-## Install
-
-1. Push this folder as a **public GitHub repo** named `Lidarr.Plugin.YoutubeMusic`
-   (edit `Owner`/`GithubUrl` in `Plugin.cs` first).
-2. In Lidarr go to **System → Plugins**, paste the repo URL, **Install**, then
-   **restart Lidarr**.
+Installing a build: if you forked this repo, point the Quick install URL at your fork (edit
+`Owner`/`GithubUrl` in `Plugin.cs`), or extract the built zip into Lidarr's
+`Plugins/<owner>/<name>/` folder and restart Lidarr.
 
 ## Configure
 
