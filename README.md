@@ -22,8 +22,63 @@ Lidarr (in-process)
   └─ Scheduler fires →
        YoutubeMusicSyncCommand → Executor
             └─ shells out:  python -m ytmusic_lidarr_sync --search
-                 (ytmusic-lidarr-sync Python package + its config.ini/headers.json)
+                 (the Python engine bundled in `sync/` + its config.ini)
 ```
+
+## Sync engine & behavior (what a run does)
+
+The plugin runs the bundled Python engine (`sync/ytmusic_lidarr_sync`) against YouTube
+Music + Lidarr:
+
+```
+YT Music -> track {title, artist(s), album}
+  -> resolve ARTIST     (exact normalized-name match; none => skipped to "Unmatched")
+  -> add artist if missing  (whole discography imported, UNMONITORED)
+  -> resolve ALBUM/SINGLE  (the matched track's album inside that artist)
+  -> MONITOR only the matched album/single   (if "Monitor matched albums & singles" = ON)
+  -> AlbumSearch that album                   (if CLI args include --search)
+```
+
+**Matching is conservative:**
+- Artists must match by **exact normalized name** (no fuzzy fallback — a near-miss like
+  `Stefen Hauk` is **not** added as `Stefan`). Same-named artists are disambiguated by the
+  track's album, then title. No confident match => the track is skipped and reported.
+- Albums/singles are matched by normalized title against the artist's Lidarr albums (with a
+  MusicBrainz fallback). Matched ones are shown under **Albums matched** and **monitored**;
+  unmatched albums are listed under **Albums not found** and left unmonitored (artist still added).
+
+**Monitoring model:** new artists are added with their discography present but **unmonitored**;
+only the **albums/singles that matched a liked track** are monitored (and searched). Everything
+else in the artist's catalog stays unmonitored. **Pre-existing artists are never retroactively
+changed.**
+
+**Where the output shows:** the full SYNC REPORT (items seen, artists added, albums matched /
+not found, unmatched, exit code) is set as the command's **completion message**, so it appears
+in **System → Tasks** after a run — no need to open the log files. (This Lidarr build's command
+API has no live line-streaming, so the full report shows on completion.)
+
+### Config reference (`/app/sync/config.ini`, or a mounted `/config/.../config.ini`)
+
+`[lidarr]` — `url` (default `http://localhost:8686`), `port` (auto from `config.xml`), `api_key`
+(auto from `config.xml`), `root_folder`, `quality_profile` (**by name**, blank = auto → Lossless),
+`metadata_profile` (**by name**, blank = auto → Standard), `album_folder`, `monitor_albums`
+(monitor **only matched** albums/singles), `monitored` (monitor new artists).
+
+`[ytmusic]` — `headers_file`, `auth` (raw cookie / path / JSON), `oauth_client_id`,
+`oauth_client_secret`, `oauth_token_file`.
+
+### CLI usage (from the sync dir)
+
+```bash
+python -m ytmusic_lidarr_sync --search          # add + monitor matched + AlbumSearch
+python -m ytmusic_lidarr_sync --add --no-monitor-albums
+python -m ytmusic_lidarr_sync --oauth-login     # one-time OAuth device flow
+python -m ytmusic_lidarr_sync --dump report.json
+```
+
+Flags: `--add`, `--search`, `--monitor-albums/--no-monitor-albums`, `--monitored/--no-monitored`,
+`--quality-profile NAME|ID`, `--metadata-profile NAME|ID`, `--playlist`, `--limit`, `--dump`,
+`--oauth-login`.
 
 ## Prerequisites
 
@@ -61,11 +116,12 @@ above and attaches the zip to a GitHub **Release** on `main`.
 1. **Settings → Metadata → "YouTube Music Sync Scan"** — this is the entry that
    drives everything (the scheduled task). Configure it **here** (see note below
    on the auth cookie):
-   - **Python executable**: `python` (or absolute path on the Lidarr host)
-   - **Sync project path**: absolute path to the ytmusic-lidarr-sync project
-     (must contain `config.ini` and the package)
-   - **CLI arguments**: `--search` (add + trigger album searches), `--add`, or
-     empty for dry-run
+   - **Python executable**: `/usr/bin/python3` (baked into the image; defaults automatically)
+   - **Sync project path**: `/app/sync` (baked image) or `/config/...` (mounted) — auto-detected
+   - **CLI arguments**: `--search` (add + monitor matched + AlbumSearch), `--add`, or empty for dry-run
+   - **Monitored (default for new artists)**: checkbox, default ON
+   - **Monitor matched albums & singles**: checkbox, default ON (monitors ONLY matched releases)
+   - **Quality Profile (name)** / **Metadata Profile (name)**: blank = auto (Lossless / Standard)
    - **Scan interval (minutes)**: how often to run (minimum 60)
    - Ensure the entry is **enabled** (an enabled entry registers the scheduled task).
 2. Optional: **Settings → Connect → + → "YouTube Music Sync"** — a settings surface
@@ -81,9 +137,9 @@ above and attaches the zip to a GitHub **Release** on `main`.
 > Leave it empty to use a `headers.json` file on the `headers_file` config path
 > instead. Cookies can expire; re-paste when rejected.
 
-> **Monitor added albums (default ON):** the **"Monitor added albums"** checkbox on the
-> entry controls whether newly added albums are auto-monitored in Lidarr (so they're
-> flagged for download). Disable it to only add artists/albums without monitoring.
+> **Monitor matched albums & singles (default ON):** only the albums/singles that matched a
+> liked track are monitored (not the artist's whole discography). Disable to add artists while
+> leaving albums unmonitored.
 
 > **OAuth instead of a cookie (recommended, durable & auto-refreshing):**
 > 1. Create a Google Cloud OAuth client (APIs & Services → Credentials → Create
@@ -99,11 +155,10 @@ above and attaches the zip to a GitHub **Release** on `main`.
 > Python + the sync engine already inside (`/app/sync`), so anyone can add the plugin by
 > installing the zip + pasting auth — **no `apk add` / file copying into the running
 > container**. The default sync-project path auto-detects `/app/sync` vs
-> `/config/ytmusic-lidarr-sync`. The API key is auto-read from Lidarr's `config.xml`.
-3. Optionally run once immediately from **System → Tasks → YouTube Music Sync**.
+> `/config/ytmusic-lidarr-sync`. The API key + port are auto-read from Lidarr's `config.xml`.
 
-The sync logs to `config/logs/Lidarr.debug.txt` (enable Debug/Trace logging in
-Settings → General to see CLI stdout/stderr).
+Run once immediately from **System → Tasks → YouTube Music Sync**; the full SYNC REPORT shows
+in the task's completion message (no need to open the logs).
 
 ## Why the Python bridge?
 
