@@ -33,6 +33,9 @@ namespace NzbDrone.Core.Plugins
             ScanIntervalMinutes = 1440;
             AuthCookie = "";
             MonitorAlbums = true;
+            Monitored = true;
+            QualityProfileId = 1;
+            MetadataProfileId = 1;
         }
 
         [FieldDefinition(0, Label = "Python executable", Type = FieldType.Textbox,
@@ -58,6 +61,18 @@ namespace NzbDrone.Core.Plugins
         [FieldDefinition(5, Label = "Monitor added albums", Type = FieldType.Checkbox,
             HelpText = "Automatically monitor newly added albums so Lidarr flags them for download. Default ON. Disable to only add artists/albums without auto-monitoring.")]
         public bool MonitorAlbums { get; set; } = true;
+
+        [FieldDefinition(6, Label = "Monitored (default for new artists)", Type = FieldType.Checkbox,
+            HelpText = "Whether newly added artists are set as Monitored. Default ON.")]
+        public bool Monitored { get; set; } = true;
+
+        [FieldDefinition(7, Label = "Quality Profile ID", Type = FieldType.Number,
+            HelpText = "Lidarr quality profile id applied to added artists (Settings > Profiles > Quality). Default 1.")]
+        public int QualityProfileId { get; set; } = 1;
+
+        [FieldDefinition(8, Label = "Metadata Profile ID", Type = FieldType.Number,
+            HelpText = "Lidarr metadata profile id applied to added artists (Settings > Profiles > Metadata). Default 1.")]
+        public int MetadataProfileId { get; set; } = 1;
 
         public NzbDroneValidationResult Validate()
         {

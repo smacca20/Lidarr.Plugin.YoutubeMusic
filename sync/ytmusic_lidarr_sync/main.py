@@ -90,6 +90,24 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Whether newly added albums are monitored (defaults to the config/plugin value: on).",
     )
+    parser.add_argument(
+        "--monitored",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Whether newly added artists are monitored (defaults to the config/plugin value: on).",
+    )
+    parser.add_argument(
+        "--quality-profile",
+        type=int,
+        default=None,
+        help="Override the Lidarr quality profile id used for added artists.",
+    )
+    parser.add_argument(
+        "--metadata-profile",
+        type=int,
+        default=None,
+        help="Override the Lidarr metadata profile id used for added artists.",
+    )
     return parser.parse_args(argv)
 
 
@@ -148,6 +166,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.monitor_albums is not None:
         config.lidarr.monitor_albums = args.monitor_albums
+    if args.monitored is not None:
+        config.lidarr.monitored = args.monitored
+    if args.quality_profile is not None:
+        config.lidarr.quality_profile_id = args.quality_profile
+    if args.metadata_profile is not None:
+        config.lidarr.metadata_profile_id = args.metadata_profile
 
     try:
         ytmusic = build_ytmusic(config.ytmusic)

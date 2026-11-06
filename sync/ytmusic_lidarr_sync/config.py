@@ -20,6 +20,7 @@ class LidarrConfig:
     language_profile_id: int = 1
     album_folder: bool = True
     monitor_albums: bool = True
+    monitored: bool = True
 
 
 @dataclass
@@ -121,6 +122,9 @@ def load_config(path: str | None = None) -> Config:
     )
     lidarr.monitor_albums = _parse_bool(
         _get("lidarr", "monitor_albums", ""), lidarr.monitor_albums
+    )
+    lidarr.monitored = _parse_bool(
+        _get("lidarr", "monitored", ""), lidarr.monitored
     )
 
     # If no API key was provided and we're talking to a local Lidarr, auto-read it

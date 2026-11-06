@@ -118,7 +118,7 @@ class LidarrClient:
         payload["metadataProfileId"] = self.metadata_profile_id
         payload["languageProfileId"] = self.language_profile_id
         payload["albumFolder"] = self.album_folder
-        payload["monitored"] = True
+        payload["monitored"] = self.monitored
         payload["addOptions"] = {
             "monitored": self.monitor_albums,
             "searchForMissingAlbums": search_missing,

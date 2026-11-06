@@ -10,6 +10,7 @@ metadata_profile_id = 1
 language_profile_id = 1
 album_folder = true
 monitor_albums = true
+monitored = true
 
 [ytmusic]
 headers_file =

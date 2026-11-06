@@ -56,10 +56,17 @@ namespace NzbDrone.Core.Plugins
                 psi.ArgumentList.Add(token);
             }
 
-            // Pass the preferred monitored-albums behaviour to the CLI.
+            // Pass the preferred default artist settings to the CLI.
             psi.ArgumentList.Add(settings.MonitorAlbums
                 ? "--monitor-albums"
                 : "--no-monitor-albums");
+            psi.ArgumentList.Add(settings.Monitored
+                ? "--monitored"
+                : "--no-monitored");
+            psi.ArgumentList.Add("--quality-profile");
+            psi.ArgumentList.Add(settings.QualityProfileId.ToString());
+            psi.ArgumentList.Add("--metadata-profile");
+            psi.ArgumentList.Add(settings.MetadataProfileId.ToString());
 
             // Provide the auth cookie in memory only (ephemeral env var), never on disk.
             if (!string.IsNullOrEmpty(settings.AuthCookie))
