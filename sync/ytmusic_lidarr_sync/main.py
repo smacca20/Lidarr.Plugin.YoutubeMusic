@@ -63,8 +63,8 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--limit",
         type=int,
-        default=50,
-        help="Max number of items to read (0 = unlimited). Default: 50.",
+        default=200,
+        help="Max number of items to read per playlist/liked list (0 = unlimited). Default: 200.",
     )
 
     action = parser.add_mutually_exclusive_group()
@@ -162,6 +162,41 @@ def _fetch_tracks(ytmusic, playlist_id: str | None, playlists_csv: str | None, l
         return extract_tracks(liked.get("tracks", []))
 
 
+def _apply_throttle(ytmusic, delay_sec: float) -> object:
+    """Add a small per-call delay + retry/backoff to YT Music API calls.
+
+    YouTube Music's internal API can throttle (429 / "too many requests") when hit
+    repeatedly; a short delay between calls and exponential backoff on rate-limit
+    errors keeps large playlists from erroring or slowing to a crawl.
+    """
+    import time
+
+    if ytmusic is None:
+        return ytmusic
+    delay = max(0.0, float(delay_sec))
+    for name in ("get_playlist", "get_liked_songs", "get_library_playlists", "get_saved_albums"):
+        orig = getattr(ytmusic, name, None)
+        if orig is None:
+            continue
+
+        def wrap(*args, _o=orig, **kwargs):  # noqa: BLE001
+            time.sleep(delay)
+            for attempt in range(4):
+                try:
+                    return _o(*args, **kwargs)
+                except Exception as exc:
+                    s = str(exc).lower()
+                    retryable = any(
+                        k in s for k in ("429", "rate", "too many", "quota", "blocked", "temporary")
+                    )
+                    if not retryable or attempt == 3:
+                        raise
+                    time.sleep(1.0 * (attempt + 1))
+
+        setattr(ytmusic, name, wrap)
+    return ytmusic
+
+
 def _print_report(result: SyncResult) -> None:
     print("\n================ SYNC REPORT ================")
     print(f"Items seen:        {result.records_seen}")
@@ -212,7 +247,7 @@ def main(argv: list[str] | None = None) -> int:
         config.lidarr.metadata_profile = args.metadata_profile
 
     try:
-        ytmusic = build_ytmusic(config.ytmusic)
+        ytmusic = _apply_throttle(build_ytmusic(config.ytmusic), config.ytmusic.request_delay_sec)
         client = LidarrClient(config.lidarr)
     except LidarrError as exc:
         print(f"[error] {exc}", file=sys.stderr)

@@ -33,6 +33,7 @@ class YTMusicConfig:
     oauth_client_id: str = ""
     oauth_client_secret: str = ""
     oauth_token_file: str = ""  # defaults to "oauth.json" in the cwd / project dir
+    request_delay_sec: float = 0.2  # small delay before each YT Music call to avoid throttling
 
 
 @dataclass
@@ -56,6 +57,15 @@ def _parse_int(value: str, default: int = 1) -> int:
         return default
     try:
         return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _parse_float(value: str, default: float = 0.0) -> float:
+    if value is None:
+        return default
+    try:
+        return float(value)
     except (TypeError, ValueError):
         return default
 
@@ -171,5 +181,8 @@ def load_config(path: str | None = None) -> Config:
     yt.oauth_client_id = _get("ytmusic", "oauth_client_id", "").strip()
     yt.oauth_client_secret = _get("ytmusic", "oauth_client_secret", "").strip()
     yt.oauth_token_file = _get("ytmusic", "oauth_token_file", "").strip()
+    yt.request_delay_sec = _parse_float(
+        _get("ytmusic", "request_delay_sec", ""), yt.request_delay_sec
+    )
 
     return Config(lidarr=lidarr, ytmusic=yt, path=path)

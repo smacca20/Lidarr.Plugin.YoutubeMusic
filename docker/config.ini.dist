@@ -19,3 +19,4 @@ auth =
 oauth_client_id =
 oauth_client_secret =
 oauth_token_file = /config/ytmusic-oauth.json
+request_delay_sec = 0.2

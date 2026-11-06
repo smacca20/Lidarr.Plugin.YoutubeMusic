@@ -89,8 +89,12 @@ python -m ytmusic_lidarr_sync --dump report.json
 ```
 
 Flags: `--add`, `--search`, `--monitor-albums/--no-monitor-albums`, `--monitored/--no-monitored`,
-`--quality-profile NAME|ID`, `--metadata-profile NAME|ID`, `--playlist`, `--limit`, `--dump`,
-`--oauth-login`.
+`--quality-profile NAME|ID`, `--metadata-profile NAME|ID`, `--playlist`, `--playlists`,
+`--limit`, `--dump`, `--oauth-login`.
+
+> **Limits & rate limiting:** each playlist / liked list is read up to `--limit` (**default 200**;
+> add `--limit 0` to the CLI arguments for the entire source). A small delay + retry/backoff
+> (`request_delay_sec`, default `0.2`) avoids YouTube Music 429 throttling on large playlists.
 
 ## Prerequisites
 
