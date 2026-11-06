@@ -61,30 +61,46 @@ def _parse_int(value: str, default: int = 1) -> int:
 
 
 _APIKEY_RE = re.compile(r"<ApiKey>\s*([^<]+?)\s*</ApiKey>", re.IGNORECASE)
+_PORT_RE = re.compile(r"<Port>\s*(\d+)\s*</Port>", re.IGNORECASE)
+_URLBASE_RE = re.compile(r"<UrlBase>\s*([^<]*?)\s*</UrlBase>", re.IGNORECASE)
 
 
 def _looks_local(url: str) -> bool:
     return "://localhost" in url or "://127." in url or url.startswith("localhost")
 
 
-def _discover_api_key() -> str:
-    """Read the Lidarr API key from its own config.xml (config on the same host)."""
-    candidates = (
+def _config_xml_candidates() -> tuple[str, ...]:
+    return (
         "/config/config.xml",
         os.path.join(os.environ.get("PROGRAMDATA", ""), "Lidarr", "config.xml"),
         os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "Lidarr", "config.xml"),
         os.path.join(os.path.expanduser("~"), ".config", "lidarr", "config.xml"),
     )
-    for candidate in candidates:
+
+
+def _discover_lidarr() -> dict:
+    """Read the API key, port and URL base from Lidarr's own config.xml (same host)."""
+    for candidate in _config_xml_candidates():
         try:
             if os.path.exists(candidate):
                 with open(candidate, encoding="utf-8") as fh:
-                    match = _APIKEY_RE.search(fh.read())
-                    if match:
-                        return match.group(1)
-        except OSError:
+                    txt = fh.read()
+                api = _APIKEY_RE.search(txt)
+                port = _PORT_RE.search(txt)
+                base = _URLBASE_RE.search(txt)
+                return {
+                    "apikey": api.group(1) if api else "",
+                    "port": int(port.group(1)) if port else None,
+                    "urlbase": (base.group(1).strip().strip("/") if base else ""),
+                }
+        except (OSError, ValueError):
             continue
-    return ""
+    return {}
+
+
+def _set_port(url: str, port: int) -> str:
+    m = re.match(r"^(https?://[^/:]+)(?::\d+)?(.*)$", url)
+    return f"{m.group(1)}:{port}{m.group(2)}" if m else url
 
 
 def load_config(path: str | None = None) -> Config:
@@ -130,10 +146,24 @@ def load_config(path: str | None = None) -> Config:
         _get("lidarr", "monitored", ""), lidarr.monitored
     )
 
-    # If no API key was provided and we're talking to a local Lidarr, auto-read it
-    # from Lidarr's own config.xml so a base install only needs the auth cookie.
-    if not lidarr.api_key and _looks_local(lidarr.url):
-        lidarr.api_key = _discover_api_key()
+    local = _looks_local(lidarr.url)
+    discovered = _discover_lidarr() if local else {}
+
+    # Auto-read the API key from Lidarr's config.xml so a base install only needs auth.
+    if not lidarr.api_key and discovered.get("apikey"):
+        lidarr.api_key = discovered["apikey"]
+
+    # Auto-match Lidarr's real port / URL base when talking to localhost, so a custom
+    # port needs no manual config. An explicit [lidarr] port always wins.
+    if local:
+        explicit_port = _parse_int(_get("lidarr", "port", ""), 0)
+        port = explicit_port or discovered.get("port")
+        if port:
+            lidarr.url = _set_port(lidarr.url, int(port))
+        urlbase = discovered.get("urlbase")
+        if urlbase:
+            lidarr.url = lidarr.url.rstrip("/") + "/" + urlbase.lstrip("/")
+        lidarr.url = lidarr.url.rstrip("/")
 
     yt = YTMusicConfig()
     yt.headers_file = _get("ytmusic", "headers_file", "").strip()

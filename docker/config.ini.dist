@@ -3,6 +3,7 @@
 ; from Lidarr's own config.xml automatically, so a base install only needs the cookie.
 [lidarr]
 url = http://localhost:8686
+port =
 api_key =
 root_folder = /media/music
 quality_profile =
