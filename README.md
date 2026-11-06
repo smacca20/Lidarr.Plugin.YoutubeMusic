@@ -76,7 +76,7 @@ not found, unmatched, exit code) is set as the command's **completion message**,
 in **System → Tasks** after a run — no need to open the log files. (This Lidarr build's command
 API has no live line-streaming, so the full report shows on completion.)
 
-### Config reference (`/app/sync/config.ini`, or a mounted `/config/.../config.ini`)
+### Config reference (a mounted `/config/.../config.ini`)
 
 `[lidarr]` — `url` (default `http://localhost:8686`), `port` (auto from `config.xml`), `api_key`
 (auto from `config.xml`), `root_folder`, `quality_profile` (**by name**, blank = auto → Lossless),
@@ -109,7 +109,7 @@ Flags: `--add`, `--search`, `--monitor-albums/--no-monitor-albums`, `--monitored
   branch does not support plugins).
 - **YouTube Music auth** — pasted into the plugin's auth field (cookie or OAuth; see
   [Configure](#configure)). No Python install needed: the sync engine is bundled in
-  `sync/` (and already inside the baked image), so Lidarr runs it itself.
+  `sync/`, so Lidarr runs it itself.
 - **.NET 8 SDK** — only if you **build from source** (see
   [Build from source](#build-from-source-optional)); the quick install needs no build.
 
@@ -139,8 +139,8 @@ Installing a build: if you forked this repo, point the Quick install URL at your
 1. **Settings → Metadata → "YouTube Music Sync Scan"** — this is the entry that
    drives everything (the scheduled task). Configure it **here** (see note below
    on the auth cookie):
-   - **Python executable**: `/usr/bin/python3` (baked into the image; defaults automatically)
-   - **Sync project path**: `/app/sync` (baked image) or `/config/...` (mounted) — auto-detected
+   - **Python executable**: `/usr/bin/python3` (the container's Python; defaults automatically)
+   - **Sync project path**: `/config/ytmusic-lidarr-sync` (mounted) — auto-detected
    - **CLI arguments**: `--search` (add + monitor matched + AlbumSearch), `--add`, or empty for dry-run
    - **Monitored (default for new artists)**: checkbox, default ON
    - **Monitor matched albums & singles**: checkbox, default ON (monitors ONLY matched releases)
@@ -169,16 +169,10 @@ Installing a build: if you forked this repo, point the Quick install URL at your
 >    OAuth client ID → **Android Auto**), give it access to the **YouTube Data API**,
 >    and copy the `client_id` / `client_secret`.
 > 2. Put them in the sync project's `config.ini` under `[ytmusic] oauth_client_id` /
->    `oauth_client_secret` (or in the baked image's `/app/sync/config.ini`).
+>    `oauth_client_secret`.
 > 3. One time, run `python3 -m ytmusic_lidarr_sync --oauth-login` (device flow: a URL +
 >    code, auto-refreshing token saved to `oauth.json`). After that the sync authenticates
 >    with OAuth automatically, with no cookie to refresh.
-
-> **Zero-touch install (baked image):** `docker/Dockerfile` builds a lidarr image with
-> Python + the sync engine already inside (`/app/sync`), so anyone can add the plugin by
-> installing the zip + pasting auth — **no `apk add` / file copying into the running
-> container**. The default sync-project path auto-detects `/app/sync` vs
-> `/config/ytmusic-lidarr-sync`. The API key + port are auto-read from Lidarr's `config.xml`.
 
 Run once immediately from **System → Tasks → YouTube Music Sync**; the full SYNC REPORT shows
 in the task's completion message (no need to open the logs).
