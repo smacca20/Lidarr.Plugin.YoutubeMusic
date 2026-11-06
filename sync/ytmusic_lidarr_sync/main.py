@@ -55,6 +55,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="YouTube Music playlist ID or URL. If omitted, uses your liked songs.",
     )
     parser.add_argument(
+        "--playlists",
+        default=None,
+        help="Comma-separated names of YOUR YouTube Music playlists to sync "
+             "(resolved via your library). Takes precedence over --playlist.",
+    )
+    parser.add_argument(
         "--limit",
         type=int,
         default=50,
@@ -113,8 +119,38 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _fetch_tracks(ytmusic, playlist_id: str | None, limit: int) -> list[dict]:
-    """Pull items from YT Music (liked songs or a playlist) and normalize."""
+def _fetch_named_playlists(ytmusic, names_csv: str, limit: int) -> list[dict]:
+    """Resolve comma-separated playlist NAMES from your library and merge their tracks."""
+    names = [n.strip() for n in (names_csv or "").split(",") if n.strip()]
+    library = ytmusic.get_library_playlists(limit=1000) or []
+    by_name = {}
+    for p in library:
+        title = (p.get("title") or "").strip()
+        if title and p.get("id"):
+            by_name[title.lower()] = p["id"]
+
+    merged: list[dict] = []
+    seen = set()
+    for name in names:
+        pid = by_name.get(name.lower())
+        if not pid:
+            print(f"[warn] playlist not found in your library: '{name}'", flush=True)
+            continue
+        key = str(pid)
+        if key in seen:
+            continue
+        seen.add(key)
+        playlist = ytmusic.get_playlist(pid, limit=limit)
+        title = playlist.get("title") or name
+        print(f"[sync] reading playlist '{title}' (limit={limit})", flush=True)
+        merged.extend(extract_tracks(playlist.get("tracks", [])))
+    return merged
+
+
+def _fetch_tracks(ytmusic, playlist_id: str | None, playlists_csv: str | None, limit: int) -> list[dict]:
+    """Pull items from YT Music (liked songs, a playlist, or named playlists) and normalize."""
+    if playlists_csv and playlists_csv.strip():
+        return _fetch_named_playlists(ytmusic, playlists_csv, limit)
     if playlist_id:
         playlist_id = _playlist_id(playlist_id)
         playlist = ytmusic.get_playlist(playlist_id, limit=limit)
@@ -183,7 +219,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
-        records = _fetch_tracks(ytmusic, args.playlist, args.limit)
+        records = _fetch_tracks(ytmusic, args.playlist, args.playlists, args.limit)
     except Exception as exc:  # noqa: BLE001 - surface a friendly message
         print(f"[error] reading YouTube Music failed: {exc}", file=sys.stderr)
         print(

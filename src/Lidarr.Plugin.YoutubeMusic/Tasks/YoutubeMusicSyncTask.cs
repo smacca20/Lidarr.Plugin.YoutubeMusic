@@ -114,6 +114,7 @@ namespace NzbDrone.Core.Plugins
                 Monitored = (task?.Monitored ?? notif?.Monitored) ?? true,
                 QualityProfile = Pick(task?.QualityProfile, notif?.QualityProfile, ""),
                 MetadataProfile = Pick(task?.MetadataProfile, notif?.MetadataProfile, ""),
+                Playlists = Pick(task?.Playlists, notif?.Playlists, ""),
             };
 
             // A base install should work with just a cookie: fall back to the container

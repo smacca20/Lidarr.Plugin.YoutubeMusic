@@ -67,6 +67,11 @@ namespace NzbDrone.Core.Plugins
             psi.ArgumentList.Add(string.IsNullOrWhiteSpace(settings.QualityProfile) ? "" : settings.QualityProfile);
             psi.ArgumentList.Add("--metadata-profile");
             psi.ArgumentList.Add(string.IsNullOrWhiteSpace(settings.MetadataProfile) ? "" : settings.MetadataProfile);
+            if (!string.IsNullOrWhiteSpace(settings.Playlists))
+            {
+                psi.ArgumentList.Add("--playlists");
+                psi.ArgumentList.Add(settings.Playlists);
+            }
 
             // Provide the auth cookie in memory only (ephemeral env var), never on disk.
             if (!string.IsNullOrEmpty(settings.AuthCookie))

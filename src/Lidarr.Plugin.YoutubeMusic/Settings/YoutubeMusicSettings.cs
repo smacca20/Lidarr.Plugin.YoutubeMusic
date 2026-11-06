@@ -36,6 +36,7 @@ namespace NzbDrone.Core.Plugins
             Monitored = true;
             QualityProfile = "";   // blank = auto-detect (prefers Lossless)
             MetadataProfile = "";  // blank = auto-detect (prefers Standard)
+            Playlists = "";
         }
 
         [FieldDefinition(0, Label = "Python executable", Type = FieldType.Textbox,
@@ -73,6 +74,10 @@ namespace NzbDrone.Core.Plugins
         [FieldDefinition(8, Label = "Metadata Profile (name)", Type = FieldType.Textbox,
             HelpText = "Lidarr metadata profile by NAME for added artists (Settings > Profiles > Metadata), e.g. Standard / None / Albums and Singles. Leave blank for auto-detect (prefers Standard).")]
         public string MetadataProfile { get; set; } = "";
+
+        [FieldDefinition(9, Label = "Playlists to sync (comma-separated names)", Type = FieldType.Textbox,
+            HelpText = "Optional. Comma-separated names of YOUR YouTube Music playlists to sync (resolved from your library). Leave empty to sync liked songs (or a URL/ID via CLI arguments). Use --limit 0 (via CLI arguments) to sync each entire playlist.")]
+        public string Playlists { get; set; } = "";
 
         public NzbDroneValidationResult Validate()
         {
