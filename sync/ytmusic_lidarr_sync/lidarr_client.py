@@ -180,6 +180,33 @@ class LidarrClient:
         }
         return payload
 
+    def build_add_album_payload(self, album_obj: dict, artist_id: int) -> dict:
+        """Expand a /album/lookup result (which may have ``id`` = None) into a
+        POST /api/v1/album body so the release is created under an existing artist.
+
+        Only the matched album is monitored (done explicitly via monitor_album), never
+        the whole discography, and no search is fired automatically on add.
+        """
+        payload = dict(album_obj)
+        # Lidarr's album add requires the nested ARTIST resource (id + name) to be
+        # present, so keep/ensure it rather than stripping it.
+        art = payload.get("artist")
+        if not isinstance(art, dict):
+            art = {}
+        art.setdefault("id", artist_id)
+        art.setdefault("artistName", "")
+        payload["artist"] = art
+        if not payload.get("artistId"):
+            payload["artistId"] = artist_id
+        if art.get("id") and not payload.get("artistId"):
+            payload["artistId"] = art["id"]
+        payload.setdefault("monitored", False)
+        payload["addOptions"] = {
+            "monitored": False,
+            "searchForNewAlbum": False,
+        }
+        return payload
+
     def monitor_album(self, album_obj: dict) -> dict:
         """Explicitly mark one album/single as monitored."""
         album_id = album_obj.get("id")

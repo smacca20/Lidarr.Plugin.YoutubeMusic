@@ -213,6 +213,22 @@ class Syncer:
             )
             matched = local or meta if local else meta
 
+        # The fallback can return a MusicBrainz catalog entry that is NOT yet in Lidarr
+        # (its id is None). With add mode on, add it under the resolved artist so the
+        # album actually shows up under that artist (this was the "matched but never
+        # added" gap). The POST returns the persisted album with a real id.
+        if (
+            matched is not None
+            and not matched.get("id")
+            and self.options.add_missing
+        ):
+            matched = (
+                self.client.add_album(
+                    self.client.build_add_album_payload(matched, artist_obj.get("id"))
+                )
+                or matched
+            )
+
         if matched is not None and matched.get("id"):
             album_id = int(matched["id"])
             stats = matched.get("statistics") or {}
