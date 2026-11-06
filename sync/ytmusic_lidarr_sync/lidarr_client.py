@@ -172,11 +172,26 @@ class LidarrClient:
         payload["languageProfileId"] = self.language_profile_id
         payload["albumFolder"] = self.album_folder
         payload["monitored"] = self.monitored
+        # Only the albums/singles that actually matched a liked track are monitored
+        # (done explicitly via monitor_album), never the whole discography by default.
         payload["addOptions"] = {
-            "monitored": self.monitor_albums,
+            "monitored": False,
             "searchForMissingAlbums": search_missing,
         }
         return payload
+
+    def monitor_album(self, album_obj: dict) -> dict:
+        """Explicitly mark one album/single as monitored."""
+        album_id = album_obj.get("id")
+        if not album_id:
+            return album_obj
+        body = dict(album_obj)
+        body["monitored"] = True
+        try:
+            with_alias = self.put(f"/api/v1/album/{album_id}", json=body)
+            return with_alias or body
+        except LidarrError:  # don't let a single monitoring failure abort the run
+            return body
 
     # -- helper lookups within a fetched artist ----------------------------
     def find_existing_artist(self, foreign_artist_id: str) -> dict | None:

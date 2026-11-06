@@ -42,6 +42,7 @@ class Syncer:
         self._artist_cache: dict[str, dict] = {}
         self._added_artist_ids: set[str] = set()
         self._album_ids_for_search: set[int] = set()
+        self._monitored_album_ids: set[int] = set()
 
     def _get_artist_cached(self, foreign_artist_id: str) -> dict | None:
         key = (foreign_artist_id or "").lower()
@@ -178,6 +179,13 @@ class Syncer:
             matched = local or meta if local else meta
 
         if matched is not None and matched.get("id"):
-            self._album_ids_for_search.add(int(matched["id"]))
+            album_id = int(matched["id"])
+            # Monitor only this matched album/single (never the whole discography),
+            # and only when we're actually mutating Lidarr (not a dry run).
+            if self.options.add_missing and self.client.monitor_albums and album_id not in self._monitored_album_ids:
+                self.client.monitor_album(matched)
+                self._monitored_album_ids.add(album_id)
+            if self.options.search:
+                self._album_ids_for_search.add(album_id)
 
         return matched

@@ -58,8 +58,8 @@ namespace NzbDrone.Core.Plugins
             HelpText = "Optional. Open https://music.youtube.com in a browser, sign in, then copy the full 'Cookie' header value (DevTools > Network > any request > Request Headers > Cookie) and paste it here. It is held in memory and passed to the sync process via an environment variable - never written to disk. Leave empty to use headers_file instead.")]
         public string AuthCookie { get; set; }
 
-        [FieldDefinition(5, Label = "Monitor added albums", Type = FieldType.Checkbox,
-            HelpText = "Automatically monitor newly added albums so Lidarr flags them for download. Default ON. Disable to only add artists/albums without auto-monitoring.")]
+        [FieldDefinition(5, Label = "Monitor matched albums & singles", Type = FieldType.Checkbox,
+            HelpText = "Monitor ONLY the albums/singles that matched a liked track (not the artist's whole discography). Default ON. Disable to add artists while leaving albums unmonitored.")]
         public bool MonitorAlbums { get; set; } = true;
 
         [FieldDefinition(6, Label = "Monitored (default for new artists)", Type = FieldType.Checkbox,
