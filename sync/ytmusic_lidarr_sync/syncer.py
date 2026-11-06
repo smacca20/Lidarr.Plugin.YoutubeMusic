@@ -177,10 +177,17 @@ class Syncer:
         albums = self.client.get_albums(artist_id) if artist_id else []
 
         matched = self.client.find_album_in_artist(albums, album_name, year)
-        if matched is None and artist_id and self.options.add_missing:
-            # Artist may have just been added; ask Lidarr to refresh so its
-            # discography (and album IDs) are imported, then re-scan. Never run
-            # in dry-run mode (that would mutate Lidarr).
+        if (
+            matched is None
+            and artist_id
+            and self.options.add_missing
+            and str(artist_obj.get("foreignArtistId", "")).lower()
+            in self._added_artist_ids
+        ):
+            # A newly-added artist has no album metadata yet; ask Lidarr to refresh so
+            # its discography (and album IDs) are imported, then re-scan. Only artists
+            # added THIS run, so pre-existing artists whose albums never match are not
+            # re-refreshed every run (which would flood the task queue).
             self.client.refresh_artist(artist_id)
             albums = self.client.get_albums(artist_id)
             matched = self.client.find_album_in_artist(albums, album_name, year)
@@ -208,12 +215,23 @@ class Syncer:
 
         if matched is not None and matched.get("id"):
             album_id = int(matched["id"])
+            stats = matched.get("statistics") or {}
+            has_files = int(stats.get("trackFileCount") or 0) > 0
             # Monitor only this matched album/single (never the whole discography),
-            # and only when we're actually mutating Lidarr (not a dry run).
-            if self.options.add_missing and self.client.monitor_albums and album_id not in self._monitored_album_ids:
+            # and only when we're mutating Lidarr (not a dry run) and it isn't already
+            # monitored (avoids redundant PUTs every run).
+            if (
+                self.options.add_missing
+                and self.client.monitor_albums
+                and not matched.get("monitored")
+                and album_id not in self._monitored_album_ids
+            ):
                 self.client.monitor_album(matched)
                 self._monitored_album_ids.add(album_id)
-            if self.options.search:
+            # Only dispatch AlbumSearch for albums still missing files. Re-searching
+            # every matched album on every run floods Lidarr's queue with
+            # search->import->rescan cycles for releases that already have files.
+            if self.options.search and not has_files:
                 self._album_ids_for_search.add(album_id)
 
         return matched
